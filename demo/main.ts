@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js'
 import { Viewport } from 'pixi-viewport'
 import * as Dash from '../index'
 
-let viewport: Viewport, g: PIXI.Graphics
+let viewport: Viewport, g: PIXI.Graphics, x2: number, y2: number
 
 function setup() {
     const canvas = document.querySelector('canvas')
@@ -16,22 +16,19 @@ function setup() {
         screenWidth: window.innerWidth,
         screenHeight: window.innerHeight,
     }))
-    viewport.pinch({
-        noDrag: true,
-    })
-    viewport.wheel({
-        center: new PIXI.Point(window.innerWidth / 2, window.innerHeight / 2)
-    })
+    viewport.pinch().wheel().decelerate().drag()
     g = viewport.addChild(new PIXI.Graphics())
-    viewport.on('zoomed', () => drawLine())
+    viewport.on('zoomed', () => draw())
+    y2 = window.innerHeight - 100
+    x2 = window.innerWidth - 100
+
 }
 
 function lineLength(x1: number, x2: number, y1: number, y2: number) {
     return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
 }
 
-function drawLine() {
-    g.clear()
+function drawScalingRectangle() {
     const scale = 1 / viewport.scale.x
     Dash.lineStyle({
         graphics: g,
@@ -39,8 +36,6 @@ function drawLine() {
         width: 5,
         scale,
     })
-    const x2 = window.innerWidth - 100
-    const y2 = window.innerHeight - 100
     Dash.line(g, 100, 100, x2, 100, x2, scale)
     let length = lineLength(100, 100, x2, 100)
     Dash.line(g, x2, 100, x2, y2, length, scale)
@@ -49,20 +44,35 @@ function drawLine() {
     length += lineLength(x2, y2, 100, y2)
     Dash.line(g, 100, y2, 100, 100, length, scale)
     length += lineLength(100, y2, 100, 100)
+}
 
+function drawCross() {
     Dash.lineStyle({
         graphics: g,
         dash: [10, 10],
         width: 5,
-        scale,
-        tint: 0xffff00,
+        color: 0xffff00,
     })
     const a = 50
     Dash.line(g, x2 - a, 100 + a, 100 + a, y2 - a)
     Dash.line(g, 100 + a, 100 + a, x2 - a, y2 - a)
+}
+
+function drawText() {
+    const text = g.addChild(new PIXI.Text('This rectangle scales when zooming', { fill: 'white' }))
+    text.position.set(x2 - text.width, 100 - text.height)
+}
+
+function draw() {
+    g.removeChildren()
+    g.clear()
+
+    drawScalingRectangle()
+    drawCross()
+    drawText()
 
     Dash.circle(g, 100, 100, 50, 1)
 }
 
 setup()
-drawLine()
+draw()

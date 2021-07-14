@@ -7,7 +7,7 @@ export interface DashLineOptions {
     graphics: PIXI.Graphics,
     dash?: Dashes,
     width?: number,
-    tint?: number,
+    color?: number,
     alpha?: number,
     scale?: number,
 }
@@ -15,7 +15,7 @@ export interface DashLineOptions {
 const dashLineOptionsDefault: Partial<DashLineOptions> = {
     dash: [10, 5],
     width: 1,
-    tint: 0xffffff,
+    color: 0xffffff,
     alpha: 1,
     scale: 1,
 }
@@ -39,7 +39,7 @@ function adjustLineStyle(graphics: PIXI.Graphics, angle: number, lineLength = 0,
  * @param [options.dashes=[10,5] - an array holding the dash and gap (eg, [10, 5, 20, 5, ...])
  * @param [options.width=1] - width of the dashed line
  * @param [options.alpha=1] - alpha of the dashed line
- * @param [options.tint=0xffffff] - tint of the dashed line
+ * @param [options.color=0xffffff] - color of the dashed line
  * @param [options.scale] - scale for the dashed line (this is optional and used to ensure dashed line stays same size regardless of zoom)
  */
 export function lineStyle(options: DashLineOptions): number {
@@ -73,7 +73,7 @@ export function lineStyle(options: DashLineOptions): number {
     }
     options.graphics.lineTextureStyle({
         width: options.width * options.scale,
-        color: options.tint,
+        color: options.color,
         alpha: options.alpha,
         texture,
     })
