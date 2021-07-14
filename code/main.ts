@@ -36,24 +36,30 @@ function drawLine() {
     Dash.lineStyle({
         graphics: g,
         dash: [20, 10],
-        lineWidth: 5,
+        width: 5,
         scale,
     })
-    // const x2 = window.innerWidth - 100
-    // const y2 = window.innerHeight - 100
-    // let length = 0
-    // Dash.line(g, 100, 100, x2, 100, length, scale)
-    // length += lineLength(100, 100, x2, 100)
-    // Dash.line(g, x2, 100, x2, y2, length, scale)
-    // length += lineLength(x2, 100, x2, y2)
-    // Dash.line(g, x2, y2, 100, y2, length, scale)
-    // length += lineLength(x2, y2, 100, y2)
-    // Dash.line(g, 100, y2, 100, 100, length, scale)
-    // length += lineLength(100, y2, 100, 100)
-    // Dash.line(g, 100, 100, x2, y2, length, scale)
-    // length += lineLength(100, 100, x2, y2)
-    // Dash.line(g, x2, 100, 100, y2, length, scale)
-    // length += lineLength(x2, 100, 100, y2)
+    const x2 = window.innerWidth - 100
+    const y2 = window.innerHeight - 100
+    Dash.line(g, 100, 100, x2, 100, x2, scale)
+    let length = lineLength(100, 100, x2, 100)
+    Dash.line(g, x2, 100, x2, y2, length, scale)
+    length += lineLength(x2, 100, x2, y2)
+    Dash.line(g, x2, y2, 100, y2, length, scale)
+    length += lineLength(x2, y2, 100, y2)
+    Dash.line(g, 100, y2, 100, 100, length, scale)
+    length += lineLength(100, y2, 100, 100)
+
+    Dash.lineStyle({
+        graphics: g,
+        dash: [10, 10],
+        width: 5,
+        scale,
+        tint: 0xffff00,
+    })
+    const a = 50
+    Dash.line(g, x2 - a, 100 + a, 100 + a, y2 - a)
+    Dash.line(g, 100 + a, 100 + a, x2 - a, y2 - a)
 
     Dash.circle(g, 100, 100, 50, 1)
 }
