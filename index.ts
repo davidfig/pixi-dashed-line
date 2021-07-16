@@ -247,7 +247,7 @@ export class DashLine {
         canvas.height = options.width
         const context = canvas.getContext("2d")
         if (!context) return
-        context.strokeStyle = "black"
+        context.strokeStyle = "white"
         context.globalAlpha = options.alpha
         context.lineWidth = options.width
         let x = 0
