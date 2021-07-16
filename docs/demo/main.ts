@@ -91,9 +91,9 @@ function draw() {
     g.removeChildren()
     g.clear()
     drawScalingRectangle()
-    // drawCircle()
-    // drawEllipse()
-    // drawPolygon()
+    drawCircle()
+    drawEllipse()
+    drawPolygon()
 }
 
 setup()

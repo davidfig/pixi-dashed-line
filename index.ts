@@ -61,6 +61,9 @@ export class DashLine {
         this.graphics = graphics
         options = { ...dashLineOptionsDefault, ...options }
         this.dash = options.dash
+        if (this.dash.length < 2) {
+            console.warn('options.dash must be an array of at least two numbers')
+        }
         this.dashSize = this.dash.reduce((a, b) => a + b)
         this.useTexture = options.useTexture
         if (this.useTexture) {
@@ -100,12 +103,17 @@ export class DashLine {
         }
         const length = DashLine.distance(this.cursor.x, this.cursor.y, x, y)
         const angle = Math.atan2(y - this.cursor.y, x - this.cursor.x)
+        const closed = closePath && x === this.start.x && y === this.start.y
         if (this.useTexture) {
             this.graphics.moveTo(this.cursor.x, this.cursor.y)
             this.adjustLineStyle(angle)
-            this.graphics.lineTo(x, y)
+            if (closed && this.dash.length % 2 === 0) {
+                const gap = this.dash[this.dash.length - 1]
+                this.graphics.lineTo(x - Math.cos(angle) * gap, y - Math.sin(angle) * gap)
+            } else {
+                this.graphics.lineTo(x, y)
+            }
         } else {
-            const closed = closePath && x === this.start.x && y === this.start.y
             const cos = Math.cos(angle)
             const sin = Math.sin(angle)
             let x0 = this.cursor.x
