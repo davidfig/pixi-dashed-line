@@ -32,7 +32,7 @@ DashLine.DashLineOptions = {
 Moves cursor to location
 
 #### lineTo(x: number, y: number, closePath?: boolean)
-Draws a dashed line. If closePath = true, then lineTo will leave a proper gap if it's destination is the first point (ie, this if the line closes the shape)
+Draws a dashed line. If closePath = true, then lineTo will leave a proper gap if its destination is the first point (ie, if this line closes the shape)
 
 #### drawCircle(x: number, y: number, radius: number, points=80)
 where x,y is the center of circle, and points are the number of points used to draw the circle
