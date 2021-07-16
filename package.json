@@ -1,6 +1,6 @@
 {
   "name": "pixi-dashed-line",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A pixi.js implementation to support dashed lines in PIXI.Graphics.",
   "browser": "dist/index.js",
   "types": "dist/index.d.ts",
