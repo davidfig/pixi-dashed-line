@@ -128,17 +128,16 @@ export class DashLine {
 
             let remaining = length
             let count = 0
-            while (remaining > 0 && count++ < 1000) {
+            while (remaining > 0) { // && count++ < 1000) {
                 const dashSize = this.dash[dashIndex] * this.scale - dashStart
                 let dist = remaining > dashSize ? dashSize : remaining
+
+                // if the last point connects to the first point, add a gap if needed
                 if (closed) {
-                    // if connected back to the first point add a gap if needed
-                    const remainingDistance = DashLine.distance(x0, y0, this.start.x, this.start.y)
+                    const remainingDistance = DashLine.distance(x0 + cos * dist, y0 + sin * dist, this.start.x, this.start.y)
                     if (remainingDistance <= dist) {
                         if (dashIndex % 2 === 0) {
-                            const lastDash = dist - this.dash[this.dash.length - 1] * this.scale
-                            // console.log(lastDash, remaining, dashSize)
-                            // if (lastDash < 0) debugger
+                            const lastDash = DashLine.distance(x0, y0, this.start.x, this.start.y) - this.dash[this.dash.length - 1] * this.scale
                             x0 += cos * lastDash
                             y0 += sin * lastDash
                             this.graphics.lineTo(x0, y0)
@@ -146,6 +145,7 @@ export class DashLine {
                         break
                     }
                 }
+
                 x0 += cos * dist
                 y0 += sin * dist
                 if (dashIndex % 2) {
@@ -159,7 +159,7 @@ export class DashLine {
                 dashIndex = dashIndex === this.dash.length ? 0 : dashIndex
                 dashStart = 0
             }
-            if (count >= 1000) console.log('failure', this.scale)
+            // if (count >= 1000) console.log('failure', this.scale)
         }
         this.lineLength += length
         this.cursor.set(x, y)
