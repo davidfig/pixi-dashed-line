@@ -14,7 +14,7 @@ The texture-based approach (`options.useTexture = true`) is useful when the geom
 
 ## Live Demo
 
-[https://davidfig.github.io/pixi-dashed-line](https://davidfig.github.io/pixi-dashed-line/) ([source code](https://github.com/davidfig/pixi-dashed-line/blob/main/demo/main.ts))
+[https://davidfig.github.io/pixi-dashed-line](https://davidfig.github.io/pixi-dashed-line/) ([source code](https://github.com/davidfig/pixi-dashed-line/blob/main/demo/index.ts))
 
 ## Documentation
 
