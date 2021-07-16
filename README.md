@@ -62,9 +62,9 @@ const dash = new DashLine(g, {
 
 // draws a dashed triangle
 dash.moveTo(0, 0)
-dash.lineTo(100, 100)
-dash.lineTo(0, 100)
-dash.lineTo(0, 0)
+    .lineTo(100, 100)
+    .lineTo(0, 100)
+    .lineTo(0, 0)
 
 ```
 
