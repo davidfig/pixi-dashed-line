@@ -1,10 +1,10 @@
 import * as PIXI from 'pixi.js'
 import { Viewport } from 'pixi-viewport'
-import { DashLine } from '../../index'
+import { DashLine } from '../lib'
 
 let viewport: Viewport, g: PIXI.Graphics, x2: number, y2: number
 
-let useTexture = true
+let useTexture = false
 
 function checkbox() {
     return document.querySelector('#use-texture') as HTMLInputElement
@@ -22,6 +22,8 @@ function setup() {
     viewport = application.stage.addChild(new Viewport({
         screenWidth: window.innerWidth,
         screenHeight: window.innerHeight,
+        passiveWheel: false,
+        stopPropagation: true,
     }))
     viewport.pinch().wheel().decelerate().drag()
     g = viewport.addChild(new PIXI.Graphics())

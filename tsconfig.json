@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "sourceMap": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "noEmit": true,
+        "declaration": false,
+        "module": "esnext",
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+    },
+    "include": [
+        "**/*.ts",
+    ]
+}

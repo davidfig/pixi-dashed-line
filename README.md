@@ -1,5 +1,7 @@
 # pixi-dashed-line
 
+A pixi.js implementation to support dashed lines in PIXI.Graphics.
+
 * Two implementations of a dashed line for pixi.js: lineTo/moveTo w/gaps, and texture-based
 * Dashed support for lineTo, drawCircle, drawEllipse, drawPolygon
 * Dashed lines can be scaled (allows for dashed lines to remain the same size regardless of zoom level)
