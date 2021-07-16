@@ -20,14 +20,14 @@ The texture-based approach (`options.useTexture = true`) is useful when the geom
 
 ### class DashLine
 #### constructor(graphics: PIXI.Graphics, options?.DashLineOptions)
-
+```js
 DashLine.DashLineOptions = {
     dashes?=[10, 5] - an array holding one or more [dash, gap] entries, eg, [10, 5, 20, 10, ...])
     width?=1 - width of the dashed line
     color?=0xffffff - color of the dashed line
     alpha?=1 - alpha of the dashed line
 }
-
+```
 #### moveTo(x: number, y: number)
 Moves cursor to location
 
