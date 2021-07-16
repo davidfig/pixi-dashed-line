@@ -94,7 +94,7 @@ export class DashLine {
         return this
     }
 
-    lineTo(x: number, y: number): this {
+    lineTo(x: number, y: number, closePath?: boolean): this {
         if (typeof this.lineLength === undefined) {
             this.moveTo(0, 0)
         }
@@ -104,9 +104,8 @@ export class DashLine {
             this.graphics.moveTo(this.cursor.x, this.cursor.y)
             this.adjustLineStyle(angle)
             this.graphics.lineTo(x, y)
-            this.lineLength += length
         } else {
-            const closed = x === this.start.x && y === this.start.y
+            const closed = closePath && x === this.start.x && y === this.start.y
             const cos = Math.cos(angle)
             const sin = Math.sin(angle)
             let x0 = this.cursor.x
@@ -128,7 +127,7 @@ export class DashLine {
             }
 
             let remaining = length
-            let count = 0
+            // let count = 0
             while (remaining > 0) { // && count++ < 1000) {
                 const dashSize = this.dash[dashIndex] * this.scale - dashStart
                 let dist = remaining > dashSize ? dashSize : remaining
@@ -167,6 +166,10 @@ export class DashLine {
         return this
     }
 
+    closePath() {
+        this.lineTo(this.start.x, this.start.y, true)
+    }
+
     drawCircle(x: number, y: number, radius: number, points = 80): this {
         const interval = Math.PI * 2 / points
         let angle = 0
@@ -194,7 +197,7 @@ export class DashLine {
                 this.lineTo(x0, y0)
             }
         }
-        this.lineTo(first.x, first.y)
+        this.lineTo(first.x, first.y, true)
         return this
     }
 
@@ -202,14 +205,14 @@ export class DashLine {
         if (typeof points[0] === 'number') {
             this.moveTo(points[0] as number, points[1] as number)
             for (let i = 2; i < points.length; i += 2) {
-                this.lineTo(points[i] as number, points[i + 1] as number)
+                this.lineTo(points[i] as number, points[i + 1] as number, i === points.length - 2)
             }
         } else {
             const point = points[0] as PIXI.Point
             this.moveTo(point.x, point.y)
             for (let i = 1; i < points.length; i++) {
                 const point = points[i] as PIXI.Point
-                this.lineTo(point.x, point.y)
+                this.lineTo(point.x, point.y, i === points.length - 1)
             }
         }
         return this
@@ -220,18 +223,22 @@ export class DashLine {
             .lineTo(x + width, y)
             .lineTo(x + width, y + height)
             .lineTo(x, y + height)
-            .lineTo(x, y)
+            .lineTo(x, y, true)
         return this
     }
 
-    // adjust the matrix of the dashed texture
+    // adjust the matrix for the dashed texture
     private adjustLineStyle(angle: number) {
         const lineStyle = this.graphics.line
         if (lineStyle.texture !== this.activeTexture) {
             console.warn('DashLine will not work if lineStyle is changed between graphics commands')
         }
         lineStyle.matrix = new PIXI.Matrix()
-        lineStyle.matrix.rotate(angle).translate(this.cursor.x + this.lineLength * Math.cos(angle) * this.scale, this.cursor.y + this.lineLength * Math.sin(angle) * this.scale)
+        if (angle) {
+            lineStyle.matrix.rotate(angle)
+        }
+        const textureStart = -this.lineLength % (this.dashSize * this.scale)
+        lineStyle.matrix.translate(this.cursor.x / this.scale + textureStart * Math.cos(angle), this.cursor.y / this.scale + textureStart * Math.sin(angle))
         if (this.scale !== 1) lineStyle.matrix.scale(this.scale, this.scale)
         this.graphics.lineStyle(lineStyle)
     }

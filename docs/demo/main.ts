@@ -44,6 +44,7 @@ function drawScalingRectangle() {
         useTexture,
         color: 0,
     })
+    // dash.moveTo(100, 100).lineTo(x2 - 100, 100)
     dash.drawRect(100, 100, x2 - 100, y2 - 100)
 
     const text = g.addChild(new PIXI.Text('This rectangle\'s outline size remains constant when zooming', { fill: 'black', fontSize: '15px' }))
@@ -90,9 +91,9 @@ function draw() {
     g.removeChildren()
     g.clear()
     drawScalingRectangle()
-    drawCircle()
-    drawEllipse()
-    drawPolygon()
+    // drawCircle()
+    // drawEllipse()
+    // drawPolygon()
 }
 
 setup()
