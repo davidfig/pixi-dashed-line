@@ -4,15 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "parcel public/index.html"
+    "start": "parcel serve ./public/index.html"
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
+  "peerDependencies": {
     "pixi.js": "^6.0.4"
   },
   "devDependencies": {
-    "parcel": "^2.0.0-beta.2",
+    "parcel": "^2.0.0-beta.3.1",
     "pixi-viewport": "^4.31.0"
   }
 }

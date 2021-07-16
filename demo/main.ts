@@ -1,8 +1,10 @@
 import * as PIXI from 'pixi.js'
 import { Viewport } from 'pixi-viewport'
-import * as Dash from '../index'
+import { DashLine } from '../index'
 
 let viewport: Viewport, g: PIXI.Graphics, x2: number, y2: number
+
+const useTexture = false
 
 function setup() {
     const canvas = document.querySelector('canvas')
@@ -11,6 +13,7 @@ function setup() {
         width: window.innerWidth,
         height: window.innerHeight,
         antialias: true,
+        backgroundAlpha: 0,
     })
     viewport = application.stage.addChild(new Viewport({
         screenWidth: window.innerWidth,
@@ -24,54 +27,55 @@ function setup() {
 
 }
 
-function lineLength(x1: number, x2: number, y1: number, y2: number) {
-    return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
-}
-
 function drawScalingRectangle() {
     const scale = 1 / viewport.scale.x
-    Dash.lineStyle({
-        graphics: g,
+    const dash = new DashLine(g, {
         dash: [20, 10],
         width: 5,
         scale,
+        useTexture,
+        color: 0,
     })
-    Dash.line(g, 100, 100, x2, 100, x2, scale)
-    let length = lineLength(100, 100, x2, 100)
-    Dash.line(g, x2, 100, x2, y2, length, scale)
-    length += lineLength(x2, 100, x2, y2)
-    Dash.line(g, x2, y2, 100, y2, length, scale)
-    length += lineLength(x2, y2, 100, y2)
-    Dash.line(g, 100, y2, 100, 100, length, scale)
-    length += lineLength(100, y2, 100, 100)
+    dash.moveTo(100, 100)
+    dash.lineTo(x2, 100)
+    dash.lineTo(x2, y2)
+    dash.lineTo(100, y2)
+    dash.lineTo(100, 100)
+
+    // const text = g.addChild(new PIXI.Text('This rectangle\'s outline size is the same when zooming', { fill: 'black', fontSize: '15px' }))
+    // text.position.set(x2 - text.width, 100 - text.height)
 }
 
-function drawCross() {
-    Dash.lineStyle({
-        graphics: g,
-        dash: [10, 10],
-        width: 5,
-        color: 0xffff00,
+function drawCircle() {
+    const dash = new DashLine(g, {
+        dash: [10, 5],
+        width: 3,
+        color: 0x0000aa,
+        useTexture,
     })
-    const a = 50
-    Dash.line(g, x2 - a, 100 + a, 100 + a, y2 - a)
-    Dash.line(g, 100 + a, 100 + a, x2 - a, y2 - a)
+    const x = window.innerWidth / 2
+    const y = window.innerHeight / 2
+    dash.circle(x, y, 100)
 }
 
-function drawText() {
-    const text = g.addChild(new PIXI.Text('This rectangle scales when zooming', { fill: 'white' }))
-    text.position.set(x2 - text.width, 100 - text.height)
+function drawEllipse() {
+    const dot = new DashLine(g, {
+        dash: [3, 3],
+        width: 3,
+        color: 0x00aa00,
+        useTexture,
+    })
+    const x = window.innerWidth / 2
+    const y = window.innerHeight / 2
+    dot.ellipse(x, y, 300, 200)
 }
 
 function draw() {
     g.removeChildren()
     g.clear()
-
     drawScalingRectangle()
-    drawCross()
-    drawText()
-
-    Dash.circle(g, 100, 100, 50, 1)
+    // drawCircle()
+    // drawEllipse()
 }
 
 setup()

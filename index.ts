@@ -4,12 +4,12 @@ import * as PIXI from 'pixi.js'
 export type Dashes = number[]
 
 export interface DashLineOptions {
-    graphics: PIXI.Graphics,
     dash?: Dashes,
     width?: number,
     color?: number,
     alpha?: number,
     scale?: number,
+    useTexture?: boolean,
 }
 
 const dashLineOptionsDefault: Partial<DashLineOptions> = {
@@ -18,42 +18,206 @@ const dashLineOptionsDefault: Partial<DashLineOptions> = {
     color: 0xffffff,
     alpha: 1,
     scale: 1,
+    useTexture: false,
 }
 
-// cache of PIXI.Textures for dashed lines
-const dashes: Record<string, PIXI.Texture> = {}
+export class DashLine {
+    graphics: PIXI.Graphics
 
-// this rotates the dashed line texture
-function adjustLineStyle(graphics: PIXI.Graphics, angle: number, lineLength = 0, scale: number) {
-    const lineStyle = graphics.line
-    lineStyle.matrix = new PIXI.Matrix()
-    lineStyle.matrix.translate(lineLength, 0)
-    if (angle) lineStyle.matrix.rotate(angle)
-    if (scale !== 1) lineStyle.matrix.scale(scale, scale)
-    graphics.lineStyle(lineStyle)
-}
+    /** current length of the line */
+    lineLength: number
 
-/**
- *
- * @param options
- * @param [options.dashes=[10,5] - an array holding the dash and gap (eg, [10, 5, 20, 5, ...])
- * @param [options.width=1] - width of the dashed line
- * @param [options.alpha=1] - alpha of the dashed line
- * @param [options.color=0xffffff] - color of the dashed line
- * @param [options.scale] - scale for the dashed line (this is optional and used to ensure dashed line stays same size regardless of zoom)
- */
-export function lineStyle(options: DashLineOptions): number {
-    options = { ...dashLineOptionsDefault, ...options }
-    const key = options.dash.toString()
-    let texture: PIXI.Texture = dashes[key]
-    if (!texture) {
-        const total = options.dash.reduce((a, b) => a + b)
+    /** cursor location */
+    cursor = new PIXI.Point()
+
+    /** desired scale of line */
+    scale = 1
+
+    // sanity check to ensure the lineStyle is still in use
+    private activeTexture: PIXI.Texture
+
+    private start: PIXI.Point
+
+    private dashSize: number
+    private dash: number[]
+
+    private useTexture: boolean
+
+
+    // cache of PIXI.Textures for dashed lines
+    static dashTextureCache: Record<string, PIXI.Texture> = {}
+
+    /**
+     * Create a DashLine
+     * @param graphics
+     * @param [options]
+     * @param [options.useTexture=false] - use the texture based render (useful for very large or very small dashed lines)
+     * @param [options.dashes=[10,5] - an array holding the dash and gap (eg, [10, 5, 20, 5, ...])
+     * @param [options.width=1] - width of the dashed line
+     * @param [options.alpha=1] - alpha of the dashed line
+     * @param [options.color=0xffffff] - color of the dashed line
+     */
+    constructor(graphics: PIXI.Graphics, options: DashLineOptions = {}) {
+        this.graphics = graphics
+        options = { ...dashLineOptionsDefault, ...options }
+        this.dash = options.dash
+        this.dashSize = this.dash.reduce((a, b) => a + b)
+        this.useTexture = options.useTexture
+        if (this.useTexture) {
+            const texture = DashLine.getTexture(options, this.dashSize)
+            graphics.lineTextureStyle({
+                width: options.width * options.scale,
+                color: options.color,
+                alpha: options.alpha,
+                texture,
+            })
+            this.activeTexture = texture
+        } else {
+            this.graphics.lineStyle({
+                width: options.width * options.scale,
+                color: options.color,
+                alpha: options.alpha,
+            })
+        }
+        this.scale = options.scale
+    }
+
+    private static distance(x1: number, y1: number, x2: number, y2: number): number {
+        return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
+    }
+
+    moveTo(x: number, y: number) {
+        this.lineLength = 0
+        this.cursor.set(x, y)
+        this.start = new PIXI.Point(x, y)
+        this.graphics.moveTo(this.cursor.x, this.cursor.y)
+    }
+
+    lineTo(x: number, y: number) {
+        if (typeof this.lineLength === undefined) {
+            this.moveTo(0, 0)
+        }
+        const length = DashLine.distance(this.cursor.x, this.cursor.y, x, y)
+        const angle = Math.atan2(y - this.cursor.y, x - this.cursor.x)
+        if (this.useTexture) {
+            this.graphics.moveTo(this.cursor.x, this.cursor.y)
+            this.adjustLineStyle(angle)
+            this.graphics.lineTo(x, y)
+            this.lineLength += length
+        } else {
+            const closed = x === this.start.x && y === this.start.y
+            const cos = Math.cos(angle)
+            const sin = Math.sin(angle)
+            let x0 = this.cursor.x
+            let y0 = this.cursor.y
+
+            // find the first part of the dash for this line
+            const place = this.lineLength % (this.dashSize * this.scale)
+            let dashIndex: number = 0, dashStart: number = 0
+            let dashX = 0
+            for (let i = 0; i < this.dash.length; i++) {
+                const dashSize = this.dash[i] * this.scale
+                if (place < dashSize) {
+                    dashIndex = i
+                    dashStart = place - dashX
+                    break
+                } else {
+                    dashX += dashSize
+                }
+            }
+
+            let remaining = length
+            let count = 0
+            while (remaining > 0 && count++ < 1000) {
+                const dashSize = this.dash[dashIndex] * this.scale - dashStart
+                let dist = remaining > dashSize ? dashSize : remaining
+                if (closed) {
+                    // if connected back to the first point add a gap if needed
+                    const remainingDistance = DashLine.distance(x0, y0, this.start.x, this.start.y)
+                    if (remainingDistance <= dist) {
+                        if (dashIndex % 2 === 0) {
+                            const lastDash = dist - this.dash[this.dash.length - 1] * this.scale
+                            // console.log(lastDash, remaining, dashSize)
+                            // if (lastDash < 0) debugger
+                            x0 += cos * lastDash
+                            y0 += sin * lastDash
+                            this.graphics.lineTo(x0, y0)
+                        }
+                        break
+                    }
+                }
+                x0 += cos * dist
+                y0 += sin * dist
+                if (dashIndex % 2) {
+                    this.graphics.moveTo(x0, y0)
+                } else {
+                    this.graphics.lineTo(x0, y0)
+                }
+                remaining -= dist
+
+                dashIndex++
+                dashIndex = dashIndex === this.dash.length ? 0 : dashIndex
+                dashStart = 0
+            }
+            if (count >= 1000) console.log('failure', this.scale)
+        }
+        this.lineLength += length
+        this.cursor.set(x, y)
+    }
+
+    circle(x: number, y: number, radius: number, points = 80) {
+        const interval = Math.PI * 2 / points
+        let angle = 0
+        const first = [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]
+        this.moveTo(first[0], first[1])
+        angle += interval
+        for (let i = 1; i < points + 1; i++) {
+            const next = i === points ? first : [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]
+            this.lineTo(next[0], next[1])
+            angle += interval
+        }
+    }
+
+    ellipse(x: number, y: number, radiusX: number, radiusY: number, points = 80) {
+        const interval = Math.PI * 2 / points
+        let first: { x: number, y: number }
+        for (let i = 0; i < Math.PI * 2; i += interval) {
+            const x0 = x - radiusX * Math.sin(i)
+            const y0 = y - radiusY * Math.cos(i)
+            if (i === 0) {
+                this.moveTo(x0, y0)
+                first = { x: x0, y: y0 }
+            } else {
+                this.lineTo(x0, y0)
+            }
+        }
+        this.lineTo(first.x, first.y)
+    }
+
+    // adjust the matrix of the dashed texture
+    private adjustLineStyle(angle: number) {
+        const lineStyle = this.graphics.line
+        if (lineStyle.texture !== this.activeTexture) {
+            console.warn('DashLine will not work if lineStyle is changed between graphics commands')
+        }
+        lineStyle.matrix = new PIXI.Matrix()
+        lineStyle.matrix.rotate(angle).translate(this.cursor.x + this.lineLength * Math.cos(angle) * this.scale, this.cursor.y + this.lineLength * Math.sin(angle) * this.scale)
+        if (this.scale !== 1) lineStyle.matrix.scale(this.scale, this.scale)
+        this.graphics.lineStyle(lineStyle)
+    }
+
+    // creates or uses cached texture
+    private static getTexture(options: DashLineOptions, dashSize: number): PIXI.Texture {
+        const key = options.dash.toString()
+        if (DashLine.dashTextureCache[key]) {
+            return DashLine.dashTextureCache[key]
+        }
         const canvas = document.createElement("canvas")
-        canvas.width = total
+        canvas.width = dashSize
         canvas.height = options.width
         const context = canvas.getContext("2d")
         if (!context) return
-        context.strokeStyle = "white"
+        context.strokeStyle = "black"
         context.globalAlpha = options.alpha
         context.lineWidth = options.width
         let x = 0
@@ -68,46 +232,8 @@ export function lineStyle(options: DashLineOptions): number {
             }
         }
         context.stroke()
-        texture = dashes[key] = PIXI.Texture.from(canvas)
+        const texture = DashLine.dashTextureCache[key] = PIXI.Texture.from(canvas)
         texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST
-    }
-    options.graphics.lineTextureStyle({
-        width: options.width * options.scale,
-        color: options.color,
-        alpha: options.alpha,
-        texture,
-    })
-}
-
-/**
- *
- * @param g
- * @param x1
- * @param y1
- * @param x2
- * @param y2
- * @param [lineLength=0] - current line length (to properly wrap texture, see Dash.circle() implementation)
- * @param [scale=1]
- */
-export function line(g: PIXI.Graphics, x1: number, y1: number, x2: number, y2: number, lineLength: number = 0, scale: number = 1) {
-    g.moveTo(x1, y1)
-    adjustLineStyle(g, Math.atan2(y2 - y1, x2 - x1), x1 + lineLength, scale)
-    g.lineTo(x2, y2)
-}
-
-export function circle(g: PIXI.Graphics, x: number, y: number, radius: number, scale: number = 1) {
-    const points = 5
-    const interval = Math.PI * 2 / points
-    let angle = 0
-    const first = [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]
-    let last = first
-    angle += interval
-    let lineLength = 0
-    for (let i = 1; i < points + 1; i++) {
-        const next = i === points ? first : [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]
-        line(g, last[0], last[1], next[0], next[1], last[0] - lineLength, scale)
-        lineLength += Math.sqrt(Math.pow(next[0] - last[0], 2) + Math.pow(next[1] - last[1], 2))
-        last = next
-        angle += interval
+        return texture
     }
 }
