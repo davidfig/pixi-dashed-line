@@ -117,7 +117,7 @@ export class DashLine {
             let dashX = 0
             for (let i = 0; i < this.dash.length; i++) {
                 const dashSize = this.dash[i] * this.scale
-                if (place < dashSize) {
+                if (place < dashX + dashSize) {
                     dashIndex = i
                     dashStart = place - dashX
                     break
