@@ -1,0 +1,31 @@
+<head>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .use-texture {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas></canvas>
+    <div class="use-texture" title="Draw dashed lines using a PIXI.Texture instead of moveTo/lineTo">
+        <input type="checkbox" id="use-texture" />
+        <label for="use-texture">options.useTexture</label>
+
+    </div>
+    <script src="../demo/main.ts"></script>
+</body>

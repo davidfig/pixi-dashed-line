@@ -1,10 +1,14 @@
 import * as PIXI from 'pixi.js'
 import { Viewport } from 'pixi-viewport'
-import { DashLine } from '../index'
+import { DashLine } from '../../index'
 
 let viewport: Viewport, g: PIXI.Graphics, x2: number, y2: number
 
-const useTexture = true
+let useTexture = true
+
+function checkbox() {
+    return document.querySelector('#use-texture') as HTMLInputElement
+}
 
 function setup() {
     const canvas = document.querySelector('canvas')
@@ -24,7 +28,11 @@ function setup() {
     viewport.on('zoomed', () => draw())
     y2 = window.innerHeight - 100
     x2 = window.innerWidth - 100
-
+    checkbox().checked = useTexture
+    checkbox().addEventListener('change', () => {
+        useTexture = !useTexture
+        draw()
+    })
 }
 
 function drawScalingRectangle() {
