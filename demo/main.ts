@@ -4,7 +4,7 @@ import { DashLine } from '../index'
 
 let viewport: Viewport, g: PIXI.Graphics, x2: number, y2: number
 
-const useTexture = false
+const useTexture = true
 
 function setup() {
     const canvas = document.querySelector('canvas')
@@ -36,14 +36,10 @@ function drawScalingRectangle() {
         useTexture,
         color: 0,
     })
-    dash.moveTo(100, 100)
-    dash.lineTo(x2, 100)
-    dash.lineTo(x2, y2)
-    dash.lineTo(100, y2)
-    dash.lineTo(100, 100)
+    dash.drawRect(100, 100, x2 - 100, y2 - 100)
 
-    // const text = g.addChild(new PIXI.Text('This rectangle\'s outline size is the same when zooming', { fill: 'black', fontSize: '15px' }))
-    // text.position.set(x2 - text.width, 100 - text.height)
+    const text = g.addChild(new PIXI.Text('This rectangle\'s outline size remains constant when zooming', { fill: 'black', fontSize: '15px' }))
+    text.position.set(x2 - text.width, 100 - text.height - 5)
 }
 
 function drawCircle() {
@@ -55,7 +51,7 @@ function drawCircle() {
     })
     const x = window.innerWidth / 2
     const y = window.innerHeight / 2
-    dash.circle(x, y, 100)
+    dash.drawCircle(x, y, 100)
 }
 
 function drawEllipse() {
@@ -67,15 +63,28 @@ function drawEllipse() {
     })
     const x = window.innerWidth / 2
     const y = window.innerHeight / 2
-    dot.ellipse(x, y, 300, 200)
+    dot.drawEllipse(x, y, 300, 200)
+}
+
+function drawPolygon() {
+    const dash = new DashLine(g, {
+        width: 2,
+        color: 0xaa0000,
+        useTexture,
+    })
+    const x = window.innerWidth / 2
+    const y = window.innerHeight / 2
+    const size = 20
+    dash.drawPolygon([x, y - size, x - size, y + size, x + size, y + size, x, y - size])
 }
 
 function draw() {
     g.removeChildren()
     g.clear()
     drawScalingRectangle()
-    // drawCircle()
-    // drawEllipse()
+    drawCircle()
+    drawEllipse()
+    drawPolygon()
 }
 
 setup()

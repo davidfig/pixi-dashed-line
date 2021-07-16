@@ -1,11 +1,10 @@
 # pixi-dashed-line
 
-Implementation of a dashed line for pixi
+* Two implementations of a dashed line for pixi.js: lineTo/moveTo w/gaps, and texture-based
+* Dashed support for lineTo, drawCircle, drawEllipse, drawPolygon
+* Dashed lines can be scaled (allows for dashed lines to remain the same size regardless of zoom level)
 
-* two implementations: standard and texture-based
-* useful when the lines are very long, as PIXI.Graphics does not handle overly large or overly small dimensions well (see https://www.html5gamedevs.com/topic/24876-weird-lines-when-using-extreme-coordinate-values/)
-* supports rescaling of the dashed lines to keep teh line/dash size the same when zooming in and out
-Also supports rescaling the texture (useful when keeping the line/dash size the same when zooming in and out of a scene).
+For most use-cases, the lineTo/moveTo (`options.useTexture = false`) is better as it provides a more accurate implementation. The texture-based approach (`options.useTexture = true`) is useful when the geometry is very large or very small as PIXI.Graphics does not handle those cases well (see https://www.html5gamedevs.com/topic/24876-weird-lines-when-using-extreme-coordinate-values/).
 
 ## Live Demo
 
@@ -29,11 +28,17 @@ Moves cursor to location
 #### lineTo(x: number, y: number)
 Draws a dashed line
 
-#### circle(x: number, y: number, radius: number, points=80)
+#### drawCircle(x: number, y: number, radius: number, points=80)
 where x,y is the center of circle, and points are the number of points used to draw the circle
 
-#### ellipse(x: number, y: number, radiusX: number, radiusY: number, points=80)
+#### drawEllipse(x: number, y: number, radiusX: number, radiusY: number, points=80)
 where x,y is the center of ellipse, and points are the number of points used to draw the ellipse
+
+#### drawRect(x: number, y: number, width: number, height: number)
+draws a dashed rectangle
+
+#### drawPolygon(PIXI.Point[] | number[])
+draws a dashed polygon
 
 ## Simple Example
 

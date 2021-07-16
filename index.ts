@@ -86,14 +86,15 @@ export class DashLine {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
     }
 
-    moveTo(x: number, y: number) {
+    moveTo(x: number, y: number): this {
         this.lineLength = 0
         this.cursor.set(x, y)
         this.start = new PIXI.Point(x, y)
         this.graphics.moveTo(this.cursor.x, this.cursor.y)
+        return this
     }
 
-    lineTo(x: number, y: number) {
+    lineTo(x: number, y: number): this {
         if (typeof this.lineLength === undefined) {
             this.moveTo(0, 0)
         }
@@ -163,9 +164,10 @@ export class DashLine {
         }
         this.lineLength += length
         this.cursor.set(x, y)
+        return this
     }
 
-    circle(x: number, y: number, radius: number, points = 80) {
+    drawCircle(x: number, y: number, radius: number, points = 80): this {
         const interval = Math.PI * 2 / points
         let angle = 0
         const first = [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]
@@ -176,9 +178,10 @@ export class DashLine {
             this.lineTo(next[0], next[1])
             angle += interval
         }
+        return this
     }
 
-    ellipse(x: number, y: number, radiusX: number, radiusY: number, points = 80) {
+    drawEllipse(x: number, y: number, radiusX: number, radiusY: number, points = 80): this {
         const interval = Math.PI * 2 / points
         let first: { x: number, y: number }
         for (let i = 0; i < Math.PI * 2; i += interval) {
@@ -192,6 +195,33 @@ export class DashLine {
             }
         }
         this.lineTo(first.x, first.y)
+        return this
+    }
+
+    drawPolygon(points: PIXI.Point[] | number[]): this {
+        if (typeof points[0] === 'number') {
+            this.moveTo(points[0] as number, points[1] as number)
+            for (let i = 2; i < points.length; i += 2) {
+                this.lineTo(points[i] as number, points[i + 1] as number)
+            }
+        } else {
+            const point = points[0] as PIXI.Point
+            this.moveTo(point.x, point.y)
+            for (let i = 1; i < points.length; i++) {
+                const point = points[i] as PIXI.Point
+                this.lineTo(point.x, point.y)
+            }
+        }
+        return this
+    }
+
+    drawRect(x: number, y: number, width: number, height: number): this {
+        this.moveTo(x, y)
+            .lineTo(x + width, y)
+            .lineTo(x + width, y + height)
+            .lineTo(x, y + height)
+            .lineTo(x, y)
+        return this
     }
 
     // adjust the matrix of the dashed texture
