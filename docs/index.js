@@ -26016,10 +26016,10 @@ void main() {
       if (angle) {
         lineStyle.matrix.rotate(angle);
       }
-      const textureStart = -this.lineLength % (this.dashSize * this.scale);
-      lineStyle.matrix.translate(this.cursor.x / this.scale + textureStart * Math.cos(angle), this.cursor.y / this.scale + textureStart * Math.sin(angle));
       if (this.scale !== 1)
         lineStyle.matrix.scale(this.scale, this.scale);
+      const textureStart = -this.lineLength;
+      lineStyle.matrix.translate(this.cursor.x + textureStart * Math.cos(angle), this.cursor.y + textureStart * Math.sin(angle));
       this.graphics.lineStyle(lineStyle);
     }
     static getTexture(options, dashSize) {
@@ -26061,7 +26061,7 @@ void main() {
   var g;
   var x2;
   var y2;
-  var useTexture = false;
+  var useTexture = true;
   function checkbox() {
     return document.querySelector("#use-texture");
   }
@@ -26145,8 +26145,21 @@ void main() {
     drawEllipse();
     drawPolygon();
   }
+  function keyboard() {
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowUp") {
+        viewport.zoom(1, true);
+        draw();
+      }
+      if (event.key === "ArrowDown") {
+        viewport.zoom(-1, true);
+        draw();
+      }
+    });
+  }
   setup();
   draw();
+  keyboard();
 })();
 /*
 object-assign

@@ -139,8 +139,6 @@ export class DashLine {
             while (remaining > 0) { // && count++ < 1000) {
                 const dashSize = this.dash[dashIndex] * this.scale - dashStart
                 let dist = remaining > dashSize ? dashSize : remaining
-
-                // if the last point connects to the first point, add a gap if needed
                 if (closed) {
                     const remainingDistance = DashLine.distance(x0 + cos * dist, y0 + sin * dist, this.start.x, this.start.y)
                     if (remainingDistance <= dist) {
@@ -245,9 +243,9 @@ export class DashLine {
         if (angle) {
             lineStyle.matrix.rotate(angle)
         }
-        const textureStart = -this.lineLength % (this.dashSize * this.scale)
-        lineStyle.matrix.translate(this.cursor.x / this.scale + textureStart * Math.cos(angle), this.cursor.y / this.scale + textureStart * Math.sin(angle))
         if (this.scale !== 1) lineStyle.matrix.scale(this.scale, this.scale)
+        const textureStart = -this.lineLength
+        lineStyle.matrix.translate(this.cursor.x + textureStart * Math.cos(angle), this.cursor.y + textureStart * Math.sin(angle))
         this.graphics.lineStyle(lineStyle)
     }
 

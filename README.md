@@ -2,15 +2,9 @@
 
 A pixi.js implementation to support dashed lines in PIXI.Graphics.
 
-* Two implementations of a dashed line for pixi.js: lineTo/moveTo w/gaps, and texture-based
+* Two implementations of a dashed line for pixi.js: lineTo/moveTo w/gaps (preferred), and texture-based (using a dashed-line texture when drawing the line)
 * Dashed support for lineTo, drawCircle, drawEllipse, drawPolygon
 * Dashed lines can be scaled (allows for dashed lines to remain the same size regardless of zoom level)
-
-## When to use options.useTexture = true
-
-For most use-cases, the lineTo/moveTo (`options.useTexture = false`) is slightly better because it provides a more accurate implementation (see Technical Notes below).
-
-The texture-based approach (`options.useTexture = true`) is useful when the geometry is very large or very small as PIXI.Graphics does not handle those cases well (see https://www.html5gamedevs.com/topic/24876-weird-lines-when-using-extreme-coordinate-values/). You'll know you need this if zooming in and out on the dashed line causes out of memory errors :)
 
 ## Live Demo
 
@@ -22,6 +16,7 @@ The texture-based approach (`options.useTexture = true`) is useful when the geom
 #### constructor(graphics: PIXI.Graphics, options?.DashLineOptions)
 ```js
 DashLine.DashLineOptions = {
+    useTexture?=false - whether to use a texture or moveTo/lineTo (see notes below in README.md)
     dashes?=[10, 5] - an array holding one or more [dash, gap] entries, eg, [10, 5, 20, 10, ...])
     width?=1 - width of the dashed line
     color?=0xffffff - color of the dashed line
@@ -67,13 +62,22 @@ dash.moveTo(0, 0)
     .lineTo(0, 0)
 
 ```
+## When to use options.useTexture = true
 
-## Technical Notes
-Additional details on why useTexture=true approach does not use pixi.js's line joins and caps for connecting lines (see https://mattdesl.svbtle.com/drawing-lines-is-hard): useTexture uses Graphics.lineTextureStyle to supply a texture to draw the dashed lines. The texture needs a custom matrix to properly rotate the dash based on the angle of the next line (and to translate the texture so it starts properly (see https://www.html5gamedevs.com/topic/45698-begintexturefill/)). Without the matrix, the dash's length will change as the line's angle changes.
+For most use-cases, the lineTo/moveTo (`options.useTexture = false`) is slightly better because it provides a more accurate implementation.
+
+The texture-based approach (`options.useTexture = true`) is useful when the geometry is very large or very small as PIXI.Graphics does not handle those cases well (see https://www.html5gamedevs.com/topic/24876-weird-lines-when-using-extreme-coordinate-values/). You'll know you need this if zooming in and out on the dashed line causes out of memory errors :)
+
+### Technical Notes on options.useTexture = true
+`options.useTexture=true` does not use pixi.js's line joins and caps for connecting lines (see https://mattdesl.svbtle.com/drawing-lines-is-hard): instead it uses `Graphics.lineTextureStyle` to supply a texture to draw the dashed lines. The texture needs a custom matrix to properly rotate the dash based on the angle of the next line (and to translate the texture so it starts properly (see https://www.html5gamedevs.com/topic/45698-begintexturefill/)). Without the matrix, the dash's length will change as the line's angle changes.
 
 Regrettably, pixi.js does not provide a mechanism to change the matrix of a texture without breaking the current line with a moveTo command. (This was my key insight that finally got this working. I banged my head many hours trying to figure out why the texture did not rotate properly. The answer was that you have to moveTo before changing the matrix.)
 
-The way to fix this issue is to build the dashed line texture directly into pixi.js's Graphics module. I thought about it, but decided the amount of work was not worth it. Hopefully someone does a different calculus and adds this feature directly into pixi.js and makes this library obsolete.
+### Future work
+Ideally, the dashed line functionality should be build directly into pixi.js's Graphics line drawing module w/logic that separates the triangles of the dashed line to take into account changes in the angle of the line. I thought about adding it, but decided the amount of work was not worth it. (Especially since the use case for useTexture is limited to strange PIXI.Graphics geometries.) Maybe someone does a different calculus and adds this feature directly into pixi.js and makes this library obsolete.
+
+## Development Notes
+There's a bug somewhere between esbuild and pixi.js's use of the ismobilejs package. For development (`npm start`), You'll need to manually edit `node_modules/ismobilejs/tsconfig.json` and change the `"target": "es3"` to `"target": "es6"`. This change is not needed to build or use the library, only when testing with the development server.
 
 ## License
 MIT License

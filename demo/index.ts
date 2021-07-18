@@ -4,7 +4,7 @@ import { DashLine } from '../lib'
 
 let viewport: Viewport, g: PIXI.Graphics, x2: number, y2: number
 
-let useTexture = false
+let useTexture = true
 
 function checkbox() {
     return document.querySelector('#use-texture') as HTMLInputElement
@@ -98,5 +98,19 @@ function draw() {
     drawPolygon()
 }
 
+function keyboard() {
+    window.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (event.key === 'ArrowUp') {
+            viewport.zoom(1, true)
+            draw()
+        }
+        if (event.key === 'ArrowDown') {
+            viewport.zoom(-1, true)
+            draw()
+        }
+    })
+}
+
 setup()
 draw()
+keyboard()

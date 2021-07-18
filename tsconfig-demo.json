@@ -1,16 +1,13 @@
 {
     "compilerOptions": {
-        "target": "ESNext",
         "sourceMap": true,
         "esModuleInterop": true,
         "moduleResolution": "node",
         "declaration": false,
-        "module": "esnext",
-        "resolveJsonModule": true,
-        "skipLibCheck": true,
         "outFile": "docs/index.js"
     },
     "files": [
         "demo/index.ts",
+        "lib/index.ts"
     ]
 }
