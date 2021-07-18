@@ -1,6 +1,6 @@
 {
   "name": "pixi-dashed-line",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A pixi.js implementation to support dashed lines in PIXI.Graphics.",
   "main": "dist/index.js",
   "browser": "dist/index.js",
@@ -8,7 +8,7 @@
   "scripts": {
     "test": "node ../esbuild-serve/src/esbuild-serve.mjs -w --server-dir=docs --outfile=docs/index.js --bundle",
     "start": "esbuild --servedir=docs --outfile=docs/index.js --bundle",
-    "build": "tsc lib/index.ts --outFile dist/index.js --skipLibCheck --module amd --moduleResolution node --declaration --sourceMap",
+    "build": "tsc lib/index.ts --outDir dist --skipLibCheck --module es6 --moduleResolution node --declaration --sourceMap",
     "build-demo": "esbuild demo/index.ts --outfile=docs/index.js --bundle",
     "prepublishOnly": "npm run build && npm run build-demo"
   },
