@@ -1,13 +1,13 @@
 {
   "name": "pixi-dashed-line",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A pixi.js implementation to support dashed lines in PIXI.Graphics.",
   "main": "dist/index.js",
   "browser": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "esbuild --servedir=docs --outfile=docs/index.js --bundle",
-    "start": "esbuild --servedir=docs --outfile=docs/index.js --bundle",
+    "start": "wmr",
+    "start-old": "esbuild demo/index.ts --servedir=docs --outDir dist --bundle",
     "build": "tsc lib/index.ts --outDir dist --skipLibCheck --module es6 --moduleResolution node --declaration --sourceMap",
     "build-demo": "esbuild demo/index.ts --outfile=docs/index.js --bundle",
     "prepublishOnly": "npm run build && npm run build-demo"
@@ -16,6 +16,15 @@
     "dist/*",
     "lib/*"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidfig/pixi-dashed-line.git"
+  },
+  "bugs": {
+    "url": "https://github.com/davidfig/pixi-dashed-line/issues",
+    "email": "david@yopeyopey.com"
+  },
+  "homepage": "https://github.com/davidfig/pixi-dashed-line#readme",
   "keywords": [
     "dash",
     "dots",
@@ -24,7 +33,7 @@
     "dotted",
     "PIXI.Graphics"
   ],
-  "author": "David Figatner (david@yopeyopey.com)",
+  "author": "David Figatner <david@yopeyopey.com> (https://yopeyopey.com)",
   "license": "MIT",
   "peerDependencies": {
     "pixi.js": "^6.0.4"
@@ -32,6 +41,7 @@
   "devDependencies": {
     "esbuild": "^0.12.15",
     "pixi-viewport": "^4.31.0",
+    "pixi.js": "^6.0.4",
     "typescript": "^4.3.5"
   }
 }
