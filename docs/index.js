@@ -25855,9 +25855,6 @@ void main() {
       this.graphics = graphics;
       options = { ...dashLineOptionsDefault, ...options };
       this.dash = options.dash;
-      if (this.dash.length < 2) {
-        console.warn("options.dash must be an array of at least two numbers");
-      }
       this.dashSize = this.dash.reduce((a, b) => a + b);
       this.useTexture = options.useTexture;
       if (this.useTexture) {
@@ -26009,9 +26006,6 @@ void main() {
     }
     adjustLineStyle(angle) {
       const lineStyle = this.graphics.line;
-      if (lineStyle.texture !== this.activeTexture) {
-        console.warn("DashLine will not work if lineStyle is changed between graphics commands");
-      }
       lineStyle.matrix = new Matrix();
       if (angle) {
         lineStyle.matrix.rotate(angle);
