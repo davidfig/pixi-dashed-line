@@ -253,7 +253,10 @@ export class DashLine {
         canvas.width = dashSize
         canvas.height = options.width
         const context = canvas.getContext("2d")
-        if (!context) return
+        if (!context) {
+            console.warn('Did not get context from canvas')
+            return
+        }
         context.strokeStyle = "white"
         context.globalAlpha = options.alpha
         context.lineWidth = options.width
