@@ -251,7 +251,7 @@ export class DashLine {
         }
         const canvas = document.createElement("canvas")
         canvas.width = dashSize
-        canvas.height = options.width
+        canvas.height = Math.ceil(options.width)
         const context = canvas.getContext("2d")
         if (!context) {
             console.warn('Did not get context from canvas')

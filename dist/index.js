@@ -229,8 +229,10 @@ var DashLine = /** @class */ (function () {
         canvas.width = dashSize;
         canvas.height = options.width;
         var context = canvas.getContext("2d");
-        if (!context)
+        if (!context) {
+            console.warn('Did not get context from canvas');
             return;
+        }
         context.strokeStyle = "white";
         context.globalAlpha = options.alpha;
         context.lineWidth = options.width;

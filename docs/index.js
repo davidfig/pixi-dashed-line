@@ -26025,8 +26025,10 @@ void main() {
       canvas2.width = dashSize;
       canvas2.height = options.width;
       const context2 = canvas2.getContext("2d");
-      if (!context2)
+      if (!context2) {
+        console.warn("Did not get context from canvas");
         return;
+      }
       context2.strokeStyle = "white";
       context2.globalAlpha = options.alpha;
       context2.lineWidth = options.width;
