@@ -31,6 +31,8 @@ var DashLine = /** @class */ (function () {
      * @param [options.width=1] - width of the dashed line
      * @param [options.alpha=1] - alpha of the dashed line
      * @param [options.color=0xffffff] - color of the dashed line
+     * @param [options.cap] - add a PIXI.LINE_CAP style to dashed lines (only works for useTexture: false)
+     * @param [options.join] - add a PIXI.LINE_JOIN style to the dashed lines (only works for useTexture: false)
      */
     function DashLine(graphics, options) {
         if (options === void 0) { options = {}; }
@@ -57,7 +59,9 @@ var DashLine = /** @class */ (function () {
             this.graphics.lineStyle({
                 width: options.width * options.scale,
                 color: options.color,
-                alpha: options.alpha
+                alpha: options.alpha,
+                cap: options.cap,
+                join: options.join
             });
         }
         this.scale = options.scale;
@@ -227,7 +231,7 @@ var DashLine = /** @class */ (function () {
         }
         var canvas = document.createElement("canvas");
         canvas.width = dashSize;
-        canvas.height = options.width;
+        canvas.height = Math.ceil(options.width);
         var context = canvas.getContext("2d");
         if (!context) {
             console.warn('Did not get context from canvas');

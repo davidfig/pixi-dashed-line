@@ -4,7 +4,7 @@ import { DashLine } from '../lib'
 
 let viewport: Viewport, g: PIXI.Graphics, x2: number, y2: number
 
-let useTexture = true
+let useTexture = false
 
 function checkbox() {
     return document.querySelector('#use-texture') as HTMLInputElement
@@ -53,6 +53,21 @@ function drawScalingRectangle() {
     text.position.set(x2 - text.width, 100 - text.height - 5)
 }
 
+function drawJoinCapRectangle() {
+    const dash = new DashLine(g, {
+        dash: [20, 5],
+        width: 3,
+        color: 0xaa00aa,
+        useTexture,
+        cap: PIXI.LINE_CAP.ROUND,
+        join: PIXI.LINE_JOIN.ROUND,
+    })
+    dash.drawRect(150, 150, x2 - 200, y2 - 200)
+
+    const text = g.addChild(new PIXI.Text('Using cap and joins (only works when useTexture: false)', { fill: 'black', fontSize: '15px' }))
+    text.position.set(x2 - 50 - text.width, 150 - text.height - 5)
+}
+
 function drawCircle() {
     const dash = new DashLine(g, {
         dash: [10, 5],
@@ -93,6 +108,7 @@ function draw() {
     g.removeChildren()
     g.clear()
     drawScalingRectangle()
+    drawJoinCapRectangle()
     drawCircle()
     drawEllipse()
     drawPolygon()

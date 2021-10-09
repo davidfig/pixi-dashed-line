@@ -5,11 +5,14 @@ export type Dashes = number[]
 
 export interface DashLineOptions {
     dash?: Dashes,
-    width?: number,
-    color?: number,
-    alpha?: number,
-    scale?: number,
-    useTexture?: boolean,
+    width?: number
+    color?: number
+    alpha?: number
+    scale?: number
+    useTexture?: boolean
+    useDots?: boolean
+    cap?: PIXI.LINE_CAP
+    join?: PIXI.LINE_JOIN
 }
 
 const dashLineOptionsDefault: Partial<DashLineOptions> = {
@@ -56,6 +59,8 @@ export class DashLine {
      * @param [options.width=1] - width of the dashed line
      * @param [options.alpha=1] - alpha of the dashed line
      * @param [options.color=0xffffff] - color of the dashed line
+     * @param [options.cap] - add a PIXI.LINE_CAP style to dashed lines (only works for useTexture: false)
+     * @param [options.join] - add a PIXI.LINE_JOIN style to the dashed lines (only works for useTexture: false)
      */
     constructor(graphics: PIXI.Graphics, options: DashLineOptions = {}) {
         this.graphics = graphics
@@ -77,6 +82,8 @@ export class DashLine {
                 width: options.width * options.scale,
                 color: options.color,
                 alpha: options.alpha,
+                cap: options.cap,
+                join: options.join,
             })
         }
         this.scale = options.scale

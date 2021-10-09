@@ -25870,7 +25870,9 @@ void main() {
         this.graphics.lineStyle({
           width: options.width * options.scale,
           color: options.color,
-          alpha: options.alpha
+          alpha: options.alpha,
+          cap: options.cap,
+          join: options.join
         });
       }
       this.scale = options.scale;
@@ -26023,7 +26025,7 @@ void main() {
       }
       const canvas2 = document.createElement("canvas");
       canvas2.width = dashSize;
-      canvas2.height = options.width;
+      canvas2.height = Math.ceil(options.width);
       const context2 = canvas2.getContext("2d");
       if (!context2) {
         console.warn("Did not get context from canvas");
@@ -26057,7 +26059,7 @@ void main() {
   var g;
   var x2;
   var y2;
-  var useTexture = true;
+  var useTexture = false;
   function checkbox() {
     return document.querySelector("#use-texture");
   }
@@ -26100,6 +26102,19 @@ void main() {
     const text = g.addChild(new Text("This rectangle's outline size remains constant when zooming", { fill: "black", fontSize: "15px" }));
     text.position.set(x2 - text.width, 100 - text.height - 5);
   }
+  function drawJoinCapRectangle() {
+    const dash = new DashLine(g, {
+      dash: [20, 5],
+      width: 3,
+      color: 11141290,
+      useTexture,
+      cap: LINE_CAP.ROUND,
+      join: LINE_JOIN.ROUND
+    });
+    dash.drawRect(150, 150, x2 - 200, y2 - 200);
+    const text = g.addChild(new Text("Using cap and joins (only works when useTexture: false)", { fill: "black", fontSize: "15px" }));
+    text.position.set(x2 - 50 - text.width, 150 - text.height - 5);
+  }
   function drawCircle() {
     const dash = new DashLine(g, {
       dash: [10, 5],
@@ -26137,6 +26152,7 @@ void main() {
     g.removeChildren();
     g.clear();
     drawScalingRectangle();
+    drawJoinCapRectangle();
     drawCircle();
     drawEllipse();
     drawPolygon();
