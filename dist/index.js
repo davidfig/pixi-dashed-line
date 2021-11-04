@@ -19,7 +19,8 @@ var dashLineOptionsDefault = {
     color: 0xffffff,
     alpha: 1,
     scale: 1,
-    useTexture: false
+    useTexture: false,
+    alignment: 0.5
 };
 var DashLine = /** @class */ (function () {
     /**
@@ -33,6 +34,7 @@ var DashLine = /** @class */ (function () {
      * @param [options.color=0xffffff] - color of the dashed line
      * @param [options.cap] - add a PIXI.LINE_CAP style to dashed lines (only works for useTexture: false)
      * @param [options.join] - add a PIXI.LINE_JOIN style to the dashed lines (only works for useTexture: false)
+     * @param [options.alignment] - The alignment of any lines drawn (0.5 = middle, 1 = outer, 0 = inner)
      */
     function DashLine(graphics, options) {
         if (options === void 0) { options = {}; }
@@ -51,7 +53,8 @@ var DashLine = /** @class */ (function () {
                 width: options.width * options.scale,
                 color: options.color,
                 alpha: options.alpha,
-                texture: texture
+                texture: texture,
+                alignment: options.alignment
             });
             this.activeTexture = texture;
         }
@@ -61,7 +64,8 @@ var DashLine = /** @class */ (function () {
                 color: options.color,
                 alpha: options.alpha,
                 cap: options.cap,
-                join: options.join
+                join: options.join,
+                alignment: options.alignment
             });
         }
         this.scale = options.scale;

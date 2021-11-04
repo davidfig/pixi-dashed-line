@@ -26100,7 +26100,7 @@ void main() {
       scale,
       useTexture,
       color: 0,
-      alignment: 0
+      alignment: 1
     });
     dash.drawRect(100, 100, x2 - 100, y2 - 100);
     const text = g.addChild(new Text("This rectangle's outline size remains constant when zooming", { fill: "black", fontSize: "15px" }));

@@ -11,6 +11,7 @@ export interface DashLineOptions {
     useDots?: boolean;
     cap?: PIXI.LINE_CAP;
     join?: PIXI.LINE_JOIN;
+    alignment?: number;
 }
 export declare class DashLine {
     graphics: PIXI.Graphics;
@@ -37,6 +38,7 @@ export declare class DashLine {
      * @param [options.color=0xffffff] - color of the dashed line
      * @param [options.cap] - add a PIXI.LINE_CAP style to dashed lines (only works for useTexture: false)
      * @param [options.join] - add a PIXI.LINE_JOIN style to the dashed lines (only works for useTexture: false)
+     * @param [options.alignment] - The alignment of any lines drawn (0.5 = middle, 1 = outer, 0 = inner)
      */
     constructor(graphics: PIXI.Graphics, options?: DashLineOptions);
     private static distance;
