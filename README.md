@@ -23,6 +23,7 @@ DashLine.DashLineOptions = {
     alpha?=1 - alpha of the dashed line
     options.cap? - add a PIXI.LINE_CAP style to dashed lines (only works for useTexture: false)
     options.join? - add a PIXI.LINE_JOIN style to the dashed lines (only works for useTexture: false)
+    options.alignment? - change alignment of lines drawn (0.5 = middle, 1 = outer, 0 = inner)
 }
 ```
 #### moveTo(x: number, y: number)

@@ -13,6 +13,7 @@ export interface DashLineOptions {
     useDots?: boolean
     cap?: PIXI.LINE_CAP
     join?: PIXI.LINE_JOIN
+    alignment?: number
 }
 
 const dashLineOptionsDefault: Partial<DashLineOptions> = {
@@ -22,6 +23,7 @@ const dashLineOptionsDefault: Partial<DashLineOptions> = {
     alpha: 1,
     scale: 1,
     useTexture: false,
+    alignment: 0.5,
 }
 
 export class DashLine {
@@ -61,6 +63,7 @@ export class DashLine {
      * @param [options.color=0xffffff] - color of the dashed line
      * @param [options.cap] - add a PIXI.LINE_CAP style to dashed lines (only works for useTexture: false)
      * @param [options.join] - add a PIXI.LINE_JOIN style to the dashed lines (only works for useTexture: false)
+     * @param [options.alignment] - The alignment of any lines drawn (0.5 = middle, 1 = outer, 0 = inner)
      */
     constructor(graphics: PIXI.Graphics, options: DashLineOptions = {}) {
         this.graphics = graphics
@@ -75,6 +78,7 @@ export class DashLine {
                 color: options.color,
                 alpha: options.alpha,
                 texture,
+                alignment: options.alignment,
             })
             this.activeTexture = texture
         } else {
@@ -84,6 +88,7 @@ export class DashLine {
                 alpha: options.alpha,
                 cap: options.cap,
                 join: options.join,
+                alignment: options.alignment,
             })
         }
         this.scale = options.scale

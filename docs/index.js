@@ -25839,7 +25839,8 @@ void main() {
     color: 16777215,
     alpha: 1,
     scale: 1,
-    useTexture: false
+    useTexture: false,
+    alignment: 0.5
   };
   var _DashLine = class {
     graphics;
@@ -25863,7 +25864,8 @@ void main() {
           width: options.width * options.scale,
           color: options.color,
           alpha: options.alpha,
-          texture
+          texture,
+          alignment: options.alignment
         });
         this.activeTexture = texture;
       } else {
@@ -25872,7 +25874,8 @@ void main() {
           color: options.color,
           alpha: options.alpha,
           cap: options.cap,
-          join: options.join
+          join: options.join,
+          alignment: options.alignment
         });
       }
       this.scale = options.scale;
@@ -26096,7 +26099,8 @@ void main() {
       width: 5,
       scale,
       useTexture,
-      color: 0
+      color: 0,
+      alignment: 0
     });
     dash.drawRect(100, 100, x2 - 100, y2 - 100);
     const text = g.addChild(new Text("This rectangle's outline size remains constant when zooming", { fill: "black", fontSize: "15px" }));
