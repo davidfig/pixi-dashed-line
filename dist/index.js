@@ -47,9 +47,15 @@ var DashLine = /** @class */ (function () {
         this.dash = options.dash;
         this.dashSize = this.dash.reduce(function (a, b) { return a + b; });
         this.useTexture = options.useTexture;
+        this.options = options;
+        this.setLineStyle();
+    }
+    /** resets line style to enable dashed line (useful if lineStyle was changed on graphics element) */
+    DashLine.prototype.setLineStyle = function () {
+        var options = this.options;
         if (this.useTexture) {
             var texture = DashLine.getTexture(options, this.dashSize);
-            graphics.lineTextureStyle({
+            this.graphics.lineTextureStyle({
                 width: options.width * options.scale,
                 color: options.color,
                 alpha: options.alpha,
@@ -69,7 +75,7 @@ var DashLine = /** @class */ (function () {
             });
         }
         this.scale = options.scale;
-    }
+    };
     DashLine.distance = function (x1, y1, x2, y2) {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
     };
@@ -157,12 +163,19 @@ var DashLine = /** @class */ (function () {
     DashLine.prototype.closePath = function () {
         this.lineTo(this.start.x, this.start.y, true);
     };
-    DashLine.prototype.drawCircle = function (x, y, radius, points) {
+    DashLine.prototype.drawCircle = function (x, y, radius, points, matrix) {
         if (points === void 0) { points = 80; }
         var interval = Math.PI * 2 / points;
-        var angle = 0;
-        var first = [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius];
-        this.moveTo(first[0], first[1]);
+        var angle = 0, first;
+        if (matrix) {
+            first = new PIXI.Point(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
+            matrix.apply(first, first);
+            this.moveTo(first[0], first[1]);
+        }
+        else {
+            first = new PIXI.Point(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
+            this.moveTo(first.x, first.y);
+        }
         angle += interval;
         for (var i = 1; i < points + 1; i++) {
             var next = i === points ? first : [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius];
@@ -171,13 +184,20 @@ var DashLine = /** @class */ (function () {
         }
         return this;
     };
-    DashLine.prototype.drawEllipse = function (x, y, radiusX, radiusY, points) {
+    DashLine.prototype.drawEllipse = function (x, y, radiusX, radiusY, points, matrix) {
         if (points === void 0) { points = 80; }
         var interval = Math.PI * 2 / points;
         var first;
+        var point = new PIXI.Point();
         for (var i = 0; i < Math.PI * 2; i += interval) {
             var x0 = x - radiusX * Math.sin(i);
             var y0 = y - radiusY * Math.cos(i);
+            if (matrix) {
+                point.set(x0, y0);
+                matrix.apply(point, point);
+                x0 = point.x;
+                y0 = point.y;
+            }
             if (i === 0) {
                 this.moveTo(x0, y0);
                 first = { x: x0, y: y0 };
@@ -189,29 +209,81 @@ var DashLine = /** @class */ (function () {
         this.lineTo(first.x, first.y, true);
         return this;
     };
-    DashLine.prototype.drawPolygon = function (points) {
+    DashLine.prototype.drawPolygon = function (points, matrix) {
+        var p = new PIXI.Point();
         if (typeof points[0] === 'number') {
-            this.moveTo(points[0], points[1]);
-            for (var i = 2; i < points.length; i += 2) {
-                this.lineTo(points[i], points[i + 1], i === points.length - 2);
+            if (matrix) {
+                p.set(points[0], points[1]);
+                matrix.apply(p, p);
+                this.moveTo(p.x, p.y);
+                for (var i = 2; i < points.length; i += 2) {
+                    p.set(points[i], points[i + 1]);
+                    matrix.apply(p, p);
+                    this.lineTo(p.x, p.y, i === points.length - 2);
+                }
+            }
+            else {
+                this.moveTo(points[0], points[1]);
+                for (var i = 2; i < points.length; i += 2) {
+                    this.lineTo(points[i], points[i + 1], i === points.length - 2);
+                }
             }
         }
         else {
-            var point = points[0];
-            this.moveTo(point.x, point.y);
-            for (var i = 1; i < points.length; i++) {
-                var point_1 = points[i];
-                this.lineTo(point_1.x, point_1.y, i === points.length - 1);
+            if (matrix) {
+                var point = points[0];
+                p.copyFrom(point);
+                matrix.apply(p, p);
+                this.moveTo(p.x, p.y);
+                for (var i = 1; i < points.length; i++) {
+                    var point_1 = points[i];
+                    p.copyFrom(point_1);
+                    matrix.apply(p, p);
+                    this.lineTo(p.x, p.y, i === points.length - 1);
+                }
+            }
+            else {
+                var point = points[0];
+                this.moveTo(point.x, point.y);
+                for (var i = 1; i < points.length; i++) {
+                    var point_2 = points[i];
+                    this.lineTo(point_2.x, point_2.y, i === points.length - 1);
+                }
             }
         }
         return this;
     };
-    DashLine.prototype.drawRect = function (x, y, width, height) {
-        this.moveTo(x, y)
-            .lineTo(x + width, y)
-            .lineTo(x + width, y + height)
-            .lineTo(x, y + height)
-            .lineTo(x, y, true);
+    DashLine.prototype.drawRect = function (x, y, width, height, matrix) {
+        if (matrix) {
+            var p = new PIXI.Point();
+            // moveTo(x, y)
+            p.set(x, y);
+            matrix.apply(p, p);
+            this.moveTo(p.x, p.y);
+            // lineTo(x + width, y)
+            p.set(x + width, y);
+            matrix.apply(p, p);
+            this.lineTo(p.x, p.y);
+            // lineTo(x + width, y + height)
+            p.set(x + width, y + height);
+            matrix.apply(p, p);
+            this.lineTo(p.x, p.y);
+            // lineto(x, y + height)
+            p.set(x, y + height);
+            matrix.apply(p, p);
+            this.lineTo(p.x, p.y);
+            // lineTo(x, y, true)
+            p.set(x, y);
+            matrix.apply(p, p);
+            this.lineTo(p.x, p.y, true);
+        }
+        else {
+            this.moveTo(x, y)
+                .lineTo(x + width, y)
+                .lineTo(x + width, y + height)
+                .lineTo(x, y + height)
+                .lineTo(x, y, true);
+        }
         return this;
     };
     // adjust the matrix for the dashed texture

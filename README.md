@@ -32,17 +32,20 @@ Moves cursor to location
 #### lineTo(x: number, y: number, closePath?: boolean)
 Draws a dashed line. If closePath = true, then lineTo will leave a proper gap if its destination is the first point (ie, if this line closes the shape)
 
-#### drawCircle(x: number, y: number, radius: number, points=80)
-where x,y is the center of circle, and points are the number of points used to draw the circle
+#### drawCircle(x: number, y: number, radius: number, points=80, matrix?: PIXI.Matrix)
+where x,y is the center of circle, and points are the number of points used to draw the circle; matrix is applied before the draw (this adds a shape-specific transform to pixi's DisplayObject transforms)
 
-#### drawEllipse(x: number, y: number, radiusX: number, radiusY: number, points=80)
-where x,y is the center of ellipse, and points are the number of points used to draw the ellipse
+#### drawEllipse(x: number, y: number, radiusX: number, radiusY: number, points=80, matrix?: PIXI.Matrix)
+where x,y is the center of ellipse, and points are the number of points used to draw the ellipse; matrix is applied before the draw (this adds a shape-specific transform to pixi's DisplayObject transforms)
 
-#### drawRect(x: number, y: number, width: number, height: number)
-draws a dashed rectangle
+#### drawRect(x: number, y: number, width: number, height: number, matrix?: PIXI.Matrix)
+draws a dashed rectangle; matrix is applied before the draw (this adds a shape-specific transform to pixi's DisplayObject transforms)
 
-#### drawPolygon(PIXI.Point[] | number[])
-draws a dashed polygon
+#### drawPolygon(PIXI.Point[] | number[], matrix?: PIXI.Matrix)
+draws a dashed polygon; matrix is applied before the draw (this adds a shape-specific transform to pixi's DisplayObject transforms)
+
+#### setLineStyle()
+changes line style to the proper dashed line style -- this is useful if the graphics element's lineStyle was changed
 
 ## Simple Example
 

@@ -26,6 +26,7 @@ export declare class DashLine {
     private dashSize;
     private dash;
     private useTexture;
+    private options;
     static dashTextureCache: Record<string, PIXI.Texture>;
     /**
      * Create a DashLine
@@ -41,14 +42,16 @@ export declare class DashLine {
      * @param [options.alignment] - The alignment of any lines drawn (0.5 = middle, 1 = outer, 0 = inner)
      */
     constructor(graphics: PIXI.Graphics, options?: DashLineOptions);
+    /** resets line style to enable dashed line (useful if lineStyle was changed on graphics element) */
+    setLineStyle(): void;
     private static distance;
     moveTo(x: number, y: number): this;
     lineTo(x: number, y: number, closePath?: boolean): this;
     closePath(): void;
-    drawCircle(x: number, y: number, radius: number, points?: number): this;
-    drawEllipse(x: number, y: number, radiusX: number, radiusY: number, points?: number): this;
-    drawPolygon(points: PIXI.Point[] | number[]): this;
-    drawRect(x: number, y: number, width: number, height: number): this;
+    drawCircle(x: number, y: number, radius: number, points?: number, matrix?: PIXI.Matrix): this;
+    drawEllipse(x: number, y: number, radiusX: number, radiusY: number, points?: number, matrix?: PIXI.Matrix): this;
+    drawPolygon(points: PIXI.Point[] | number[], matrix?: PIXI.Matrix): this;
+    drawRect(x: number, y: number, width: number, height: number, matrix?: PIXI.Matrix): this;
     private adjustLineStyle;
     private static getTexture;
 }

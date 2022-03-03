@@ -47,7 +47,7 @@ export class DashLine {
     private dash: number[]
 
     private useTexture: boolean
-
+    private options: DashLineOptions;
 
     // cache of PIXI.Textures for dashed lines
     static dashTextureCache: Record<string, PIXI.Texture> = {}
@@ -71,9 +71,16 @@ export class DashLine {
         this.dash = options.dash
         this.dashSize = this.dash.reduce((a, b) => a + b)
         this.useTexture = options.useTexture
+        this.options = options;
+        this.setLineStyle();
+    }
+
+    /** resets line style to enable dashed line (useful if lineStyle was changed on graphics element) */
+    setLineStyle() {
+        const options = this.options
         if (this.useTexture) {
             const texture = DashLine.getTexture(options, this.dashSize)
-            graphics.lineTextureStyle({
+            this.graphics.lineTextureStyle({
                 width: options.width * options.scale,
                 color: options.color,
                 alpha: options.alpha,
@@ -90,6 +97,7 @@ export class DashLine {
                 join: options.join,
                 alignment: options.alignment,
             })
+
         }
         this.scale = options.scale
     }
@@ -185,11 +193,17 @@ export class DashLine {
         this.lineTo(this.start.x, this.start.y, true)
     }
 
-    drawCircle(x: number, y: number, radius: number, points = 80): this {
+    drawCircle(x: number, y: number, radius: number, points = 80, matrix?: PIXI.Matrix): this {
         const interval = Math.PI * 2 / points
-        let angle = 0
-        const first = [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]
-        this.moveTo(first[0], first[1])
+        let angle = 0, first: PIXI.Point
+        if (matrix) {
+            first = new PIXI.Point(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius)
+            matrix.apply(first, first)
+            this.moveTo(first[0], first[1])
+        } else {
+            first = new PIXI.Point(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius)
+            this.moveTo(first.x, first.y)
+        }
         angle += interval
         for (let i = 1; i < points + 1; i++) {
             const next = i === points ? first : [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]
@@ -199,12 +213,19 @@ export class DashLine {
         return this
     }
 
-    drawEllipse(x: number, y: number, radiusX: number, radiusY: number, points = 80): this {
+    drawEllipse(x: number, y: number, radiusX: number, radiusY: number, points = 80, matrix?: PIXI.Matrix): this {
         const interval = Math.PI * 2 / points
         let first: { x: number, y: number }
+        const point = new PIXI.Point()
         for (let i = 0; i < Math.PI * 2; i += interval) {
-            const x0 = x - radiusX * Math.sin(i)
-            const y0 = y - radiusY * Math.cos(i)
+            let x0 = x - radiusX * Math.sin(i)
+            let y0 = y - radiusY * Math.cos(i)
+            if (matrix) {
+                point.set(x0, y0)
+                matrix.apply(point, point)
+                x0 = point.x
+                y0 = point.y
+            }
             if (i === 0) {
                 this.moveTo(x0, y0)
                 first = { x: x0, y: y0 }
@@ -216,29 +237,83 @@ export class DashLine {
         return this
     }
 
-    drawPolygon(points: PIXI.Point[] | number[]): this {
+    drawPolygon(points: PIXI.Point[] | number[], matrix?: PIXI.Matrix): this {
+        const p = new PIXI.Point()
         if (typeof points[0] === 'number') {
-            this.moveTo(points[0] as number, points[1] as number)
-            for (let i = 2; i < points.length; i += 2) {
-                this.lineTo(points[i] as number, points[i + 1] as number, i === points.length - 2)
+            if (matrix) {
+                p.set(points[0] as number, points[1] as number)
+                matrix.apply(p, p)
+                this.moveTo(p.x, p.y)
+                for (let i = 2; i < points.length; i += 2) {
+                    p.set(points[i] as number, points[i + 1] as number)
+                    matrix.apply(p, p)
+                    this.lineTo(p.x, p.y, i === points.length - 2)
+                }
+            } else {
+                this.moveTo(points[0] as number, points[1] as number)
+                for (let i = 2; i < points.length; i += 2) {
+                    this.lineTo(points[i] as number, points[i + 1] as number, i === points.length - 2)
+                }
             }
         } else {
-            const point = points[0] as PIXI.Point
-            this.moveTo(point.x, point.y)
-            for (let i = 1; i < points.length; i++) {
-                const point = points[i] as PIXI.Point
-                this.lineTo(point.x, point.y, i === points.length - 1)
+            if (matrix) {
+                const point = points[0] as PIXI.Point
+                p.copyFrom(point)
+                matrix.apply(p, p)
+                this.moveTo(p.x, p.y)
+                for (let i = 1; i < points.length; i++) {
+                    const point = points[i] as PIXI.Point
+                    p.copyFrom(point)
+                    matrix.apply(p, p)
+                    this.lineTo(p.x, p.y, i === points.length - 1)
+                }
+            } else {
+                const point = points[0] as PIXI.Point
+                this.moveTo(point.x, point.y)
+                for (let i = 1; i < points.length; i++) {
+                    const point = points[i] as PIXI.Point
+                    this.lineTo(point.x, point.y, i === points.length - 1)
+                }
             }
         }
         return this
     }
 
-    drawRect(x: number, y: number, width: number, height: number): this {
-        this.moveTo(x, y)
-            .lineTo(x + width, y)
-            .lineTo(x + width, y + height)
-            .lineTo(x, y + height)
-            .lineTo(x, y, true)
+    drawRect(x: number, y: number, width: number, height: number, matrix?: PIXI.Matrix): this {
+        if (matrix) {
+            const p = new PIXI.Point()
+
+            // moveTo(x, y)
+            p.set(x, y)
+            matrix.apply(p, p)
+            this.moveTo(p.x, p.y)
+
+            // lineTo(x + width, y)
+            p.set(x + width, y)
+            matrix.apply(p, p)
+            this.lineTo(p.x, p.y)
+
+            // lineTo(x + width, y + height)
+            p.set(x + width, y + height)
+            matrix.apply(p, p)
+            this.lineTo(p.x, p.y)
+
+            // lineto(x, y + height)
+            p.set(x, y + height)
+            matrix.apply(p, p)
+            this.lineTo(p.x, p.y)
+
+            // lineTo(x, y, true)
+            p.set(x, y)
+            matrix.apply(p, p)
+            this.lineTo(p.x, p.y, true)
+        } else {
+            this.moveTo(x, y)
+                .lineTo(x + width, y)
+                .lineTo(x + width, y + height)
+                .lineTo(x, y + height)
+                .lineTo(x, y, true)
+        }
         return this
     }
 
