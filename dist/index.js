@@ -99,6 +99,7 @@ var DashLine = /** @class */ (function () {
             if (closed && this.dash.length % 2 === 0) {
                 var gap = this.dash[this.dash.length - 1];
                 this.graphics.lineTo(x - Math.cos(angle) * gap, y - Math.sin(angle) * gap);
+                this.graphics.closePath();
             }
             else {
                 this.graphics.lineTo(x, y);
@@ -189,6 +190,7 @@ var DashLine = /** @class */ (function () {
         var interval = Math.PI * 2 / points;
         var first;
         var point = new PIXI.Point();
+        var f = 0;
         for (var i = 0; i < Math.PI * 2; i += interval) {
             var x0 = x - radiusX * Math.sin(i);
             var y0 = y - radiusY * Math.cos(i);

@@ -127,6 +127,7 @@ export class DashLine {
             if (closed && this.dash.length % 2 === 0) {
                 const gap = this.dash[this.dash.length - 1]
                 this.graphics.lineTo(x - Math.cos(angle) * gap, y - Math.sin(angle) * gap)
+                this.graphics.closePath();
             } else {
                 this.graphics.lineTo(x, y)
             }
@@ -217,6 +218,7 @@ export class DashLine {
         const interval = Math.PI * 2 / points
         let first: { x: number, y: number }
         const point = new PIXI.Point()
+        let f = 0
         for (let i = 0; i < Math.PI * 2; i += interval) {
             let x0 = x - radiusX * Math.sin(i)
             let y0 = y - radiusY * Math.cos(i)
