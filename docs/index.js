@@ -27362,7 +27362,6 @@ void main() {
   };
 
   // lib/index.ts
-  console.log("hello-1");
   var dashLineOptionsDefault = {
     dash: [10, 5],
     width: 1,
@@ -27437,7 +27436,6 @@ void main() {
         this.graphics.moveTo(this.cursor.x, this.cursor.y);
         this.adjustLineStyle(angle);
         if (closed && this.dash.length % 2 === 0) {
-          console.log(this.dash[this.dash.length - 1], length);
           const gap = Math.min(this.dash[this.dash.length - 1], length);
           this.graphics.lineTo(x - Math.cos(angle) * gap, y - Math.sin(angle) * gap);
           this.graphics.closePath();
