@@ -125,7 +125,8 @@ export class DashLine {
             this.graphics.moveTo(this.cursor.x, this.cursor.y)
             this.adjustLineStyle(angle)
             if (closed && this.dash.length % 2 === 0) {
-                const gap = this.dash[this.dash.length - 1]
+                console.log(this.dash[this.dash.length - 1], length)
+                const gap = Math.min(this.dash[this.dash.length - 1], length);
                 this.graphics.lineTo(x - Math.cos(angle) * gap, y - Math.sin(angle) * gap)
                 this.graphics.closePath();
             } else {

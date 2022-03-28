@@ -27362,6 +27362,7 @@ void main() {
   };
 
   // lib/index.ts
+  console.log("hello-1");
   var dashLineOptionsDefault = {
     dash: [10, 5],
     width: 1,
@@ -27436,7 +27437,8 @@ void main() {
         this.graphics.moveTo(this.cursor.x, this.cursor.y);
         this.adjustLineStyle(angle);
         if (closed && this.dash.length % 2 === 0) {
-          const gap = this.dash[this.dash.length - 1];
+          console.log(this.dash[this.dash.length - 1], length);
+          const gap = Math.min(this.dash[this.dash.length - 1], length);
           this.graphics.lineTo(x - Math.cos(angle) * gap, y - Math.sin(angle) * gap);
           this.graphics.closePath();
         } else {
@@ -27724,6 +27726,17 @@ void main() {
     const y = window.innerHeight / 2;
     dash.drawCircle(x, y, 100);
   }
+  function drawTinyCircle() {
+    const dash = new DashLine(g, {
+      dash: [10, 5],
+      width: 0.5,
+      color: 11141290,
+      useTexture
+    });
+    const x = window.innerWidth / 2;
+    const y = window.innerHeight / 2;
+    dash.drawCircle(x, y, 5);
+  }
   function drawEllipse() {
     const dot = new DashLine(g, {
       dash: [3, 3],
@@ -27752,6 +27765,7 @@ void main() {
     drawScalingRectangle();
     drawJoinCapRectangle();
     drawCircle();
+    drawTinyCircle();
     drawEllipse();
     drawPolygon();
   }

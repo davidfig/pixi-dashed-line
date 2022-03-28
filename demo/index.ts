@@ -80,6 +80,18 @@ function drawCircle() {
     dash.drawCircle(x, y, 100)
 }
 
+function drawTinyCircle() {
+    const dash = new DashLine(g, {
+        dash: [10, 5],
+        width: 0.5,
+        color: 0xaa00aa,
+        useTexture,
+    })
+    const x = window.innerWidth / 2
+    const y = window.innerHeight / 2
+    dash.drawCircle(x, y, 5)
+}
+
 function drawEllipse() {
     const dot = new DashLine(g, {
         dash: [3, 3],
@@ -110,6 +122,7 @@ function draw() {
     drawScalingRectangle()
     drawJoinCapRectangle()
     drawCircle()
+    drawTinyCircle()
     drawEllipse()
     drawPolygon()
 }
