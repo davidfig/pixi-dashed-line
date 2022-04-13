@@ -214,6 +214,21 @@ export class DashLine {
         return this
     }
 
+    arc(cx: number, cy: number, radius: number, startAngle: number, endAngle: number, points = 80): this {
+        const interval = (endAngle - startAngle) / points;
+        let angle = startAngle;
+        for (let i = 0; i < points + 1; i++) {
+            const next = [cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius];
+            if (i === 0) {
+                this.moveTo(next[0], next[1]);
+            } else {
+                this.lineTo(next[0], next[1]);
+            }
+            angle += interval;
+        }
+        return this;
+    }
+
     drawEllipse(x: number, y: number, radiusX: number, radiusY: number, points = 80, matrix?: PIXI.Matrix): this {
         const interval = Math.PI * 2 / points
         let first: { x: number, y: number }
