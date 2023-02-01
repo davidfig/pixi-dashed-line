@@ -50,7 +50,7 @@ changes line style to the proper dashed line style -- this is useful if the grap
 ## Simple Example
 
 ```js
-import { DashLine } from 'pixi-dashed-lines'
+import { DashLine } from 'pixi-dashed-line'
 
 ...
 const g = stage.addChild(new PIXI.Graphics())
