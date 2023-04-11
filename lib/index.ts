@@ -207,7 +207,7 @@ export class DashLine {
         }
         angle += interval
         for (let i = 1; i < points + 1; i++) {
-            const next = i === points ? first : [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]
+            const next = i === points ? [first.x, first.y] : [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]
             this.lineTo(next[0], next[1])
             angle += interval
         }
