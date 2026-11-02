@@ -5,45 +5,32 @@ export type Dashes = number[]
 
 export type DashLineOptions = {
     dash?: Dashes
+    /** where the line starts in the dash pattern (in unscaled dash units); change and redraw to animate the dashes */
+    dashOffset?: number
     width?: number
-    color?: number
+    color?: PIXI.ColorSource
     alpha?: number
     scale?: number
     useTexture?: boolean
-    useDots?: boolean
-    cap?: "butt" | "round" | "square"
-    join?: "bevel" | "miter" | "round"
+    cap?: PIXI.LineCap
+    join?: PIXI.LineJoin
     alignment?: number
 }
 
-function getPointOnArc(
-    cx: number,
-    cy: number,
-    radius: number,
-    angle: number,
-    matrix?: PIXI.Matrix
-) {
-    const radian = (angle * Math.PI) / 180
-    const x = cx + Math.cos(radian) * radius
-    const y = cy + Math.sin(radian) * radius
-
-    if (matrix) {
-        const p = new PIXI.Point(x, y)
-        matrix.apply(p, p)
-        return { x: p.x, y: p.y }
-    }
-    return { x, y }
-}
-
-const dashLineOptionsDefault: Partial<DashLineOptions> = {
+const dashLineOptionsDefault: Required<DashLineOptions> = {
     dash: [10, 5],
+    dashOffset: 0,
     width: 1,
     color: 0xffffff,
     alpha: 1,
     scale: 1,
     useTexture: false,
+    cap: "butt",
+    join: "miter",
     alignment: 0.5,
 }
+
+const tempPoint = new PIXI.Point()
 
 export class DashLine {
     graphics: PIXI.Graphics
@@ -57,15 +44,19 @@ export class DashLine {
     /** desired scale of line */
     scale = 1
 
-    // sanity check to ensure the lineStyle is still in use
-    private activeTexture: PIXI.Texture | undefined = undefined
+    /** where each line starts in the dash pattern (in unscaled dash units); applied at moveTo */
+    dashOffset: number
 
     private start: PIXI.Point = new PIXI.Point(0, 0)
+
+    // offset into the dash pattern at this.start (used to decide whether a closed path needs a final gap)
+    private startPlace = 0
 
     private dashSize: number
     private dash: number[]
 
     private useTexture: boolean
+    private texture: PIXI.Texture | undefined
     private options: Required<DashLineOptions>
 
     // cache of PIXI.Textures for dashed lines
@@ -76,51 +67,57 @@ export class DashLine {
      * @param graphics
      * @param [options]
      * @param [options.useTexture=false] - use the texture based render (useful for very large or very small dashed lines)
-     * @param [options.dashes=[10,5] - an array holding the dash and gap (eg, [10, 5, 20, 5, ...])
+     * @param [options.dash=[10,5]] - an array holding the dash and gap (eg, [10, 5, 20, 5, ...])
+     * @param [options.dashOffset=0] - where the line starts in the dash pattern (change and redraw to animate)
      * @param [options.width=1] - width of the dashed line
      * @param [options.alpha=1] - alpha of the dashed line
      * @param [options.color=0xffffff] - color of the dashed line
-     * @param [options.cap] - add a PIXI.LINE_CAP style to dashed lines (only works for useTexture: false)
-     * @param [options.join] - add a PIXI.LINE_JOIN style to the dashed lines (only works for useTexture: false)
-     * @param [options.alignment] - The alignment of any lines drawn (0.5 = middle, 1 = outer, 0 = inner)
+     * @param [options.scale=1] - scale of the dashes and width (eg, 1 / viewport.scale.x keeps the line the same size when zooming)
+     * @param [options.cap=butt] - line cap style for the dashes (only works for useTexture: false)
+     * @param [options.join=miter] - line join style for the dashes (only works for useTexture: false)
+     * @param [options.alignment=0.5] - alignment of the line (pixi.js v8: 0.5 = middle, 1 = inside, 0 = outside)
      */
     constructor(graphics: PIXI.Graphics, options: DashLineOptions = {}) {
         this.graphics = graphics
-        const mergedOpts = {
-            ...dashLineOptionsDefault,
-            ...options,
-        } as Required<DashLineOptions>
-        this.dash = mergedOpts.dash!
+        this.options = { ...dashLineOptionsDefault, ...options }
+        this.dash = this.options.dash
         this.dashSize = this.dash.reduce((a, b) => a + b)
-        this.useTexture = Boolean(mergedOpts.useTexture)
-        this.options = mergedOpts
+        this.dashOffset = this.options.dashOffset
+        this.useTexture = Boolean(this.options.useTexture)
+        this.scale = this.options.scale
+        if (this.useTexture) {
+            this.texture = DashLine.getTexture(this.options, this.dashSize)
+        }
         this.setStrokeStyle()
     }
 
-    /** resets line style to enable dashed line (useful if lineStyle was changed on graphics element) */
-    setStrokeStyle() {
-        const options = this.options
-        if (this.useTexture) {
-            const texture = DashLine.getTexture(options, this.dashSize)
-            this.graphics.stroke({
-                width: options.width * options.scale,
-                color: options.color,
-                alpha: options.alpha,
-                texture,
-                alignment: options.alignment,
-            })
-            this.activeTexture = texture!
-        } else {
-            this.graphics.stroke({
-                width: options.width * options.scale,
-                color: options.color,
-                alpha: options.alpha,
-                cap: options.cap,
-                join: options.join,
-                alignment: options.alignment,
-            })
+    /** sets the graphics element's stroke style to this dashed line's style (so graphics.stroke() draws with it) */
+    setStrokeStyle(): this {
+        this.graphics.setStrokeStyle(this.getStrokeStyle())
+        return this
+    }
+
+    /**
+     * Strokes the dashed path drawn since the last stroke (like PIXI.Graphics.stroke()).
+     * Lines drawn with useTexture: true are stroked as they are drawn, so this is only required for useTexture: false.
+     */
+    stroke(): this {
+        if (!this.useTexture) {
+            this.graphics.stroke(this.getStrokeStyle())
         }
-        this.scale = options.scale
+        return this
+    }
+
+    private getStrokeStyle(): PIXI.StrokeStyle {
+        const options = this.options
+        return {
+            width: options.width * this.scale,
+            color: options.color,
+            alpha: options.alpha,
+            cap: options.cap,
+            join: options.join,
+            alignment: options.alignment,
+        }
     }
 
     private static distance(
@@ -132,42 +129,56 @@ export class DashLine {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
     }
 
+    // place within the (scaled) dash pattern for a given line length
+    private getPlace(lineLength: number): number {
+        const size = this.dashSize * this.scale
+        return ((lineLength % size) + size) % size
+    }
+
     moveTo(x: number, y: number): this {
-        this.lineLength = 0
+        this.lineLength = this.dashOffset * this.scale
+        this.startPlace = this.getPlace(this.lineLength)
         this.cursor.set(x, y)
-        this.start = new PIXI.Point(x, y)
+        this.start.set(x, y)
         this.graphics.moveTo(this.cursor.x, this.cursor.y)
         return this
     }
 
     lineTo(x: number, y: number, closePath?: boolean): this {
-        if (this.lineLength === undefined) {
-            this.moveTo(0, 0)
-        }
         const length = DashLine.distance(this.cursor.x, this.cursor.y, x, y)
         const angle = Math.atan2(y - this.cursor.y, x - this.cursor.x)
-        const closed = closePath && x === this.start.x && y === this.start.y
+        const cos = Math.cos(angle)
+        const sin = Math.sin(angle)
+
+        // leaving a gap before the start only makes sense if the pattern starts with a dash
+        const closed =
+            closePath &&
+            this.startPlace === 0 &&
+            x === this.start.x &&
+            y === this.start.y
         if (this.useTexture) {
-            this.graphics.moveTo(this.cursor.x, this.cursor.y)
-            this.adjustStrokeStyle(angle)
+            let x1 = x
+            let y1 = y
             if (closed && this.dash.length % 2 === 0) {
-                const gap = Math.min(this.dash[this.dash.length - 1], length)
-                this.graphics.lineTo(
-                    x - Math.cos(angle) * gap,
-                    y - Math.sin(angle) * gap
+                const gap = Math.min(
+                    this.dash[this.dash.length - 1] * this.scale,
+                    length
                 )
-                this.graphics.closePath()
-            } else {
-                this.graphics.lineTo(x, y)
+                x1 -= cos * gap
+                y1 -= sin * gap
             }
+
+            // each segment needs its own stroke since the texture's matrix depends on the segment's angle
+            this.graphics
+                .moveTo(this.cursor.x, this.cursor.y)
+                .lineTo(x1, y1)
+                .stroke(this.getTextureStyle(angle))
         } else {
-            const cos = Math.cos(angle)
-            const sin = Math.sin(angle)
             let x0 = this.cursor.x
             let y0 = this.cursor.y
 
             // find the first part of the dash for this line
-            const place = this.lineLength % (this.dashSize * this.scale)
+            const place = this.getPlace(this.lineLength)
             let dashIndex: number = 0
             let dashStart: number = 0
             let dashX = 0
@@ -183,9 +194,7 @@ export class DashLine {
             }
 
             let remaining = length
-            // let count = 0
             while (remaining > 0) {
-                // && count++ < 1000) {
                 const dashSize = this.dash[dashIndex] * this.scale - dashStart
                 const dist = remaining > dashSize ? dashSize : remaining
                 if (closed) {
@@ -226,15 +235,128 @@ export class DashLine {
                 dashIndex = dashIndex === this.dash.length ? 0 : dashIndex
                 dashStart = 0
             }
-            // if (count >= 1000) console.log('failure', this.scale)
         }
         this.lineLength += length
         this.cursor.set(x, y)
         return this
     }
 
-    closePath() {
-        this.lineTo(this.start.x, this.start.y, true)
+    closePath(): this {
+        return this.lineTo(this.start.x, this.start.y, true)
+    }
+
+    /**
+     * Draws a dashed quadratic curve from the cursor
+     * @param [points=20] - number of line segments used to draw the curve
+     */
+    quadraticCurveTo(
+        cpx: number,
+        cpy: number,
+        x: number,
+        y: number,
+        points = 20
+    ): this {
+        const x0 = this.cursor.x
+        const y0 = this.cursor.y
+        for (let i = 1; i <= points; i++) {
+            const t = i / points
+            const mt = 1 - t
+            this.lineTo(
+                mt * mt * x0 + 2 * mt * t * cpx + t * t * x,
+                mt * mt * y0 + 2 * mt * t * cpy + t * t * y
+            )
+        }
+        return this
+    }
+
+    /**
+     * Draws a dashed cubic bezier curve from the cursor
+     * @param [points=20] - number of line segments used to draw the curve
+     */
+    bezierCurveTo(
+        cp1x: number,
+        cp1y: number,
+        cp2x: number,
+        cp2y: number,
+        x: number,
+        y: number,
+        points = 20
+    ): this {
+        const x0 = this.cursor.x
+        const y0 = this.cursor.y
+        for (let i = 1; i <= points; i++) {
+            const t = i / points
+            const mt = 1 - t
+            const a = mt * mt * mt
+            const b = 3 * mt * mt * t
+            const c = 3 * mt * t * t
+            const d = t * t * t
+            this.lineTo(
+                a * x0 + b * cp1x + c * cp2x + d * x,
+                a * y0 + b * cp1y + c * cp2y + d * y
+            )
+        }
+        return this
+    }
+
+    // applies the optional matrix to a point (returns a shared point)
+    private static transform(
+        x: number,
+        y: number,
+        matrix?: PIXI.Matrix
+    ): PIXI.Point {
+        tempPoint.set(x, y)
+        if (matrix) {
+            matrix.apply(tempPoint, tempPoint)
+        }
+        return tempPoint
+    }
+
+    /**
+     * Draws a dashed arc (starts a new line at the start of the arc)
+     * @param startAngle - in radians
+     * @param endAngle - in radians (if smaller than startAngle, the arc is drawn counterclockwise)
+     * @param [points=80] - number of line segments used to draw the arc
+     */
+    arc(
+        cx: number,
+        cy: number,
+        radius: number,
+        startAngle: number,
+        endAngle: number,
+        points = 80,
+        matrix?: PIXI.Matrix
+    ): this {
+        const p = DashLine.transform(
+            cx + Math.cos(startAngle) * radius,
+            cy + Math.sin(startAngle) * radius,
+            matrix
+        )
+        this.moveTo(p.x, p.y)
+        return this.arcTo(cx, cy, radius, startAngle, endAngle, points, matrix)
+    }
+
+    // draws the arc from the cursor (which should be at startAngle)
+    private arcTo(
+        cx: number,
+        cy: number,
+        radius: number,
+        startAngle: number,
+        endAngle: number,
+        points: number,
+        matrix?: PIXI.Matrix
+    ): this {
+        const interval = (endAngle - startAngle) / points
+        for (let i = 1; i <= points; i++) {
+            const angle = startAngle + i * interval
+            const p = DashLine.transform(
+                cx + Math.cos(angle) * radius,
+                cy + Math.sin(angle) * radius,
+                matrix
+            )
+            this.lineTo(p.x, p.y)
+        }
+        return this
     }
 
     circle(
@@ -245,34 +367,18 @@ export class DashLine {
         matrix?: PIXI.Matrix
     ): this {
         const interval = (Math.PI * 2) / points
-        let angle = 0
-        let first: PIXI.Point
-        if (matrix) {
-            first = new PIXI.Point(
+        const first = DashLine.transform(x + radius, y, matrix).clone()
+        this.moveTo(first.x, first.y)
+        for (let i = 1; i < points; i++) {
+            const angle = i * interval
+            const p = DashLine.transform(
                 x + Math.cos(angle) * radius,
-                y + Math.sin(angle) * radius
+                y + Math.sin(angle) * radius,
+                matrix
             )
-            matrix.apply(first, first)
-            this.moveTo(first.x, first.y)
-        } else {
-            first = new PIXI.Point(
-                x + Math.cos(angle) * radius,
-                y + Math.sin(angle) * radius
-            )
-            this.moveTo(first.x, first.y)
+            this.lineTo(p.x, p.y)
         }
-        angle += interval
-        for (let i = 1; i < points + 1; i++) {
-            const next =
-                i === points
-                    ? first
-                    : {
-                          x: x + Math.cos(angle) * radius,
-                          y: y + Math.sin(angle) * radius,
-                      }
-            this.lineTo(next.x, next.y)
-            angle += interval
-        }
+        this.lineTo(first.x, first.y, true)
         return this
     }
 
@@ -285,68 +391,45 @@ export class DashLine {
         matrix?: PIXI.Matrix
     ): this {
         const interval = (Math.PI * 2) / points
-        let first: { x: number; y: number } = { x: 0, y: 0 }
-
-        const point = new PIXI.Point()
-        for (let i = 0; i < Math.PI * 2; i += interval) {
-            let x0 = x - radiusX * Math.sin(i)
-            let y0 = y - radiusY * Math.cos(i)
-            if (matrix) {
-                point.set(x0, y0)
-                matrix.apply(point, point)
-                x0 = point.x
-                y0 = point.y
-            }
-            if (i === 0) {
-                this.moveTo(x0, y0)
-                first = { x: x0, y: y0 }
-            } else {
-                this.lineTo(x0, y0)
-            }
+        const first = DashLine.transform(x, y - radiusY, matrix).clone()
+        this.moveTo(first.x, first.y)
+        for (let i = 1; i < points; i++) {
+            const angle = i * interval
+            const p = DashLine.transform(
+                x - radiusX * Math.sin(angle),
+                y - radiusY * Math.cos(angle),
+                matrix
+            )
+            this.lineTo(p.x, p.y)
         }
         this.lineTo(first.x, first.y, true)
         return this
     }
 
-    poly(points: PIXI.Point[] | number[], matrix?: PIXI.Matrix): this {
-        const p = new PIXI.Point()
+    poly(points: PIXI.PointData[] | number[], matrix?: PIXI.Matrix): this {
         if (typeof points[0] === "number") {
-            if (matrix) {
-                p.set(points[0] as number, points[1] as number)
-                matrix.apply(p, p)
-                this.moveTo(p.x, p.y)
-                for (let i = 2; i < points.length; i += 2) {
-                    p.set(points[i] as number, points[i + 1] as number)
-                    matrix.apply(p, p)
-                    this.lineTo(p.x, p.y, i === points.length - 2)
-                }
-            } else {
-                this.moveTo(points[0] as number, points[1] as number)
-                for (let i = 2; i < points.length; i += 2) {
-                    this.lineTo(
-                        points[i] as number,
-                        points[i + 1] as number,
-                        i === points.length - 2
-                    )
-                }
-            }
-        } else if (matrix) {
-            const point = points[0] as PIXI.Point
-            p.copyFrom(point)
-            matrix.apply(p, p)
-            this.moveTo(p.x, p.y)
-            for (let i = 1; i < points.length; i++) {
-                const point = points[i] as PIXI.Point
-                p.copyFrom(point)
-                matrix.apply(p, p)
-                this.lineTo(p.x, p.y, i === points.length - 1)
+            const numbers = points as number[]
+            const first = DashLine.transform(numbers[0], numbers[1], matrix)
+            this.moveTo(first.x, first.y)
+            for (let i = 2; i < numbers.length; i += 2) {
+                const p = DashLine.transform(numbers[i], numbers[i + 1], matrix)
+                this.lineTo(p.x, p.y, i === numbers.length - 2)
             }
         } else {
-            const point = points[0] as PIXI.Point
-            this.moveTo(point.x, point.y)
-            for (let i = 1; i < points.length; i++) {
-                const point = points[i] as PIXI.Point
-                this.lineTo(point.x, point.y, i === points.length - 1)
+            const pointData = points as PIXI.PointData[]
+            const first = DashLine.transform(
+                pointData[0].x,
+                pointData[0].y,
+                matrix
+            )
+            this.moveTo(first.x, first.y)
+            for (let i = 1; i < pointData.length; i++) {
+                const p = DashLine.transform(
+                    pointData[i].x,
+                    pointData[i].y,
+                    matrix
+                )
+                this.lineTo(p.x, p.y, i === pointData.length - 1)
             }
         }
         return this
@@ -359,165 +442,77 @@ export class DashLine {
         height: number,
         matrix?: PIXI.Matrix
     ): this {
-        if (matrix) {
-            const p = new PIXI.Point()
-
-            // moveTo(x, y)
-            p.set(x, y)
-            matrix.apply(p, p)
-            this.moveTo(p.x, p.y)
-
-            // lineTo(x + width, y)
-            p.set(x + width, y)
-            matrix.apply(p, p)
-            this.lineTo(p.x, p.y)
-
-            // lineTo(x + width, y + height)
-            p.set(x + width, y + height)
-            matrix.apply(p, p)
-            this.lineTo(p.x, p.y)
-
-            // lineto(x, y + height)
-            p.set(x, y + height)
-            matrix.apply(p, p)
-            this.lineTo(p.x, p.y)
-
-            // lineTo(x, y, true)
-            p.set(x, y)
-            matrix.apply(p, p)
-            this.lineTo(p.x, p.y, true)
-        } else {
-            this.moveTo(x, y)
-                .lineTo(x + width, y)
-                .lineTo(x + width, y + height)
-                .lineTo(x, y + height)
-                .lineTo(x, y, true)
-        }
-        return this
+        return this.poly(
+            [x, y, x + width, y, x + width, y + height, x, y + height, x, y],
+            matrix
+        )
     }
 
+    /**
+     * Draws a dashed rectangle with rounded corners
+     * @param [radius=10] - corner radius (limited to half the smaller side)
+     * @param [points=10] - number of line segments used to draw each corner
+     */
     roundRect(
         x: number,
         y: number,
         width: number,
         height: number,
-        cornerRadius: number = 10,
+        radius: number = 10,
+        points = 10,
         matrix?: PIXI.Matrix
     ): this {
-        const minSize = Math.min(width, height)
-        cornerRadius = Math.min(cornerRadius, minSize / 2) // Ensure radius is valid
+        radius = Math.max(0, Math.min(radius, Math.min(width, height) / 2))
+        const half = Math.PI / 2
 
-        const p = new PIXI.Point()
-
-        // Helper function to move points using matrix
-        const transformPoint = (px: number, py: number) => {
-            if (matrix) {
-                p.set(px, py)
-                matrix.apply(p, p)
-                return { x: p.x, y: p.y }
-            }
-            return { x: px, y: py }
-        }
-
-        // Start at the top-left corner, moving to the first point
-        const start = transformPoint(x + cornerRadius, y)
+        const start = DashLine.transform(x + radius, y, matrix).clone()
         this.moveTo(start.x, start.y)
 
-        // Top edge
-        let end = transformPoint(x + width - cornerRadius, y)
-        this.lineTo(end.x, end.y)
-        this.drawDashedArc(
-            x + width - cornerRadius,
-            y + cornerRadius,
-            cornerRadius,
-            -90,
-            0,
-            matrix
-        )
+        let p = DashLine.transform(x + width - radius, y, matrix)
+        this.lineTo(p.x, p.y)
+        this.arcTo(x + width - radius, y + radius, radius, -half, 0, points, matrix)
 
-        // Right edge
-        end = transformPoint(x + width, y + height - cornerRadius)
-        this.lineTo(end.x, end.y)
-        this.drawDashedArc(
-            x + width - cornerRadius,
-            y + height - cornerRadius,
-            cornerRadius,
-            0,
-            90,
-            matrix
-        )
+        p = DashLine.transform(x + width, y + height - radius, matrix)
+        this.lineTo(p.x, p.y)
+        this.arcTo(x + width - radius, y + height - radius, radius, 0, half, points, matrix)
 
-        // Bottom edge
-        end = transformPoint(x + cornerRadius, y + height)
-        this.lineTo(end.x, end.y)
-        this.drawDashedArc(
-            x + cornerRadius,
-            y + height - cornerRadius,
-            cornerRadius,
-            90,
-            180,
-            matrix
-        )
+        p = DashLine.transform(x + radius, y + height, matrix)
+        this.lineTo(p.x, p.y)
+        this.arcTo(x + radius, y + height - radius, radius, half, Math.PI, points, matrix)
 
-        // Left edge
-        end = transformPoint(x, y + cornerRadius)
-        this.lineTo(end.x, end.y)
-        this.drawDashedArc(
-            x + cornerRadius,
-            y + cornerRadius,
-            cornerRadius,
-            180,
-            270,
-            matrix
-        )
+        p = DashLine.transform(x, y + radius, matrix)
+        this.lineTo(p.x, p.y)
 
-        // Close path
+        // the last corner ends exactly at the start so the path closes properly
+        this.arcTo(x + radius, y + radius, radius, Math.PI, Math.PI + half - half / points, points - 1, matrix)
         this.lineTo(start.x, start.y, true)
-
         return this
     }
 
-    private drawDashedArc(
-        cx: number,
-        cy: number,
-        radius: number,
-        startAngle: number,
-        endAngle: number,
-        matrix?: PIXI.Matrix
-    ): this {
-        const segments = 10 // Increase for smoother curves
-        const angleStep = (endAngle - startAngle) / segments
-
-        for (let i = 1; i <= segments; i++) {
-            const nextPoint = getPointOnArc(
-                cx,
-                cy,
-                radius,
-                startAngle + i * angleStep,
-                matrix
-            )
-            this.lineTo(nextPoint.x, nextPoint.y)
-        }
-
-        return this
-    }
-
-    // adjust the matrix for the dashed texture
-    private adjustStrokeStyle(angle: number) {
-        const strokeStyle = this.graphics.strokeStyle
-        strokeStyle.matrix = new PIXI.Matrix()
+    // creates the stroke style (with the texture's matrix) for a segment of the line with useTexture: true
+    private getTextureStyle(angle: number): PIXI.StrokeStyle {
+        const matrix = new PIXI.Matrix()
         if (angle) {
-            strokeStyle.matrix.rotate(angle)
+            matrix.rotate(angle)
         }
         if (this.scale !== 1) {
-            strokeStyle.matrix.scale(this.scale, this.scale)
+            matrix.scale(this.scale, this.scale)
         }
         const textureStart = -this.lineLength
-        strokeStyle.matrix.translate(
+        matrix.translate(
             this.cursor.x + textureStart * Math.cos(angle),
             this.cursor.y + textureStart * Math.sin(angle)
         )
-        this.graphics.stroke(strokeStyle)
+        const options = this.options
+        return {
+            width: options.width * this.scale,
+            color: options.color,
+            alpha: options.alpha,
+            alignment: options.alignment,
+            texture: this.texture,
+            matrix,
+            textureSpace: "global",
+        }
     }
 
     // creates or uses cached texture
@@ -525,7 +520,7 @@ export class DashLine {
         options: Required<DashLineOptions>,
         dashSize: number
     ): PIXI.Texture | undefined {
-        const key = options.dash.toString()
+        const key = `${options.dash.toString()}-${options.width}`
         if (DashLine.dashTextureCache[key]) {
             return DashLine.dashTextureCache[key]
         }
@@ -538,8 +533,8 @@ export class DashLine {
             return undefined
         }
 
+        // color and alpha are applied by the stroke
         context.strokeStyle = "white"
-        context.globalAlpha = options.alpha
         context.lineWidth = options.width
         let x = 0
         const y = options.width / 2
