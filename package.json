@@ -34,12 +34,12 @@
   "author": "David Figatner <david@yopeyopey.com> (https://yopeyopey.com)",
   "license": "MIT",
   "peerDependencies": {
-    "pixi.js": "^8.8.0"
+    "pixi.js": "^8"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
-    "pixi-viewport": "^6.0.3",
-    "pixi.js": "^8.8.0",
-    "typescript": "^5.7.3"
+    "esbuild": "^0.28.2",
+    "pixi-viewport": "^7.0.0",
+    "pixi.js": "^8.22.0",
+    "typescript": "^5.9.3"
   }
 }
