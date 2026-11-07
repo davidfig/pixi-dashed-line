@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js'
 import { Viewport } from 'pixi-viewport'
 import { DashLine } from '../lib'
 
-let viewport: Viewport, g: PIXI.Graphics, x2: number, y2: number
+let viewport: Viewport, g: PIXI.Graphics, animated: PIXI.Graphics, labels: PIXI.Container, x2: number, y2: number
 
 let useTexture = false
 
@@ -10,23 +10,25 @@ function checkbox() {
     return document.querySelector('#use-texture') as HTMLInputElement
 }
 
-function setup() {
-    const canvas = document.querySelector('canvas')
-    const application = new PIXI.Application({
-        view: canvas,
-        width: window.innerWidth,
-        height: window.innerHeight,
+async function setup() {
+    const application = new PIXI.Application()
+    await application.init({
+        canvas: document.querySelector('canvas')!,
+        resizeTo: window,
         antialias: true,
         backgroundAlpha: 0,
     })
     viewport = application.stage.addChild(new Viewport({
         screenWidth: window.innerWidth,
         screenHeight: window.innerHeight,
+        events: application.renderer.events,
         passiveWheel: false,
         stopPropagation: true,
     }))
     viewport.pinch().wheel().decelerate().drag()
     g = viewport.addChild(new PIXI.Graphics())
+    animated = viewport.addChild(new PIXI.Graphics())
+    labels = viewport.addChild(new PIXI.Container())
     viewport.on('zoomed', () => draw())
     y2 = window.innerHeight - 100
     x2 = window.innerWidth - 100
@@ -35,6 +37,12 @@ function setup() {
         useTexture = !useTexture
         draw()
     })
+    application.ticker.add((ticker) => drawMarchingAnts(ticker.lastTime))
+}
+
+function label(text: string, x: number, y: number) {
+    const t = labels.addChild(new PIXI.Text({ text, style: { fill: 'black', fontSize: 15 } }))
+    t.position.set(x - t.width, y - t.height - 5)
 }
 
 function drawScalingRectangle() {
@@ -45,12 +53,10 @@ function drawScalingRectangle() {
         scale,
         useTexture,
         color: 0,
-        alignment: 1,
+        alignment: 0,
     })
-    dash.drawRect(100, 100, x2 - 100, y2 - 100)
-
-    const text = g.addChild(new PIXI.Text('This rectangle\'s outline size remains constant when zooming', { fill: 'black', fontSize: '15px' }))
-    text.position.set(x2 - text.width, 100 - text.height - 5)
+    dash.rect(100, 100, x2 - 100, y2 - 100).stroke()
+    label('This rectangle\'s outline size remains constant when zooming', x2, 100)
 }
 
 function drawJoinCapRectangle() {
@@ -59,13 +65,48 @@ function drawJoinCapRectangle() {
         width: 3,
         color: 0xaa00aa,
         useTexture,
-        cap: PIXI.LINE_CAP.ROUND,
-        join: PIXI.LINE_JOIN.ROUND,
+        cap: 'round',
+        join: 'round',
     })
-    dash.drawRect(150, 150, x2 - 200, y2 - 200)
+    dash.rect(150, 150, x2 - 200, y2 - 200).stroke()
+    label('Using cap and joins (only works when useTexture: false)', x2 - 50, 150)
+}
 
-    const text = g.addChild(new PIXI.Text('Using cap and joins (only works when useTexture: false)', { fill: 'black', fontSize: '15px' }))
-    text.position.set(x2 - 50 - text.width, 150 - text.height - 5)
+function drawRoundRect() {
+    const dash = new DashLine(g, {
+        dash: [8, 4],
+        width: 2,
+        color: 0x0088aa,
+        useTexture,
+    })
+    dash.roundRect(200, 200, 250, 120, 30).stroke()
+    label('roundRect', 450, 200)
+}
+
+function drawCurves() {
+    const dash = new DashLine(g, {
+        dash: [12, 6],
+        width: 3,
+        color: 0xaa5500,
+        useTexture,
+    })
+    const y = y2 - 150
+    dash.moveTo(200, y)
+        .bezierCurveTo(250, y - 120, 350, y + 120, 400, y)
+        .quadraticCurveTo(450, y - 100, 500, y)
+        .stroke()
+    label('bezierCurveTo and quadraticCurveTo', 500, y - 60)
+}
+
+function drawArc() {
+    const dash = new DashLine(g, {
+        dash: [6, 4],
+        width: 3,
+        color: 0x5500aa,
+        useTexture,
+    })
+    dash.arc(x2 - 250, y2 - 150, 60, Math.PI, Math.PI * 2.5).stroke()
+    label('arc', x2 - 180, y2 - 220)
 }
 
 function drawCircle() {
@@ -77,7 +118,7 @@ function drawCircle() {
     })
     const x = window.innerWidth / 2
     const y = window.innerHeight / 2
-    dash.drawCircle(x, y, 100)
+    dash.circle(x, y, 100).stroke()
 }
 
 function drawTinyCircle() {
@@ -89,7 +130,7 @@ function drawTinyCircle() {
     })
     const x = window.innerWidth / 2
     const y = window.innerHeight / 2
-    dash.drawCircle(x, y, 5)
+    dash.circle(x, y, 5).stroke()
 }
 
 function drawEllipse() {
@@ -101,7 +142,7 @@ function drawEllipse() {
     })
     const x = window.innerWidth / 2
     const y = window.innerHeight / 2
-    dot.drawEllipse(x, y, 300, 200)
+    dot.ellipse(x, y, 300, 200).stroke()
 }
 
 function drawPolygon() {
@@ -113,18 +154,34 @@ function drawPolygon() {
     const x = window.innerWidth / 2
     const y = window.innerHeight / 2
     const size = 20
-    dash.drawPolygon([x, y - size, x - size, y + size, x + size, y + size, x, y - size])
+    dash.poly([x, y - size, x - size, y + size, x + size, y + size, x, y - size]).stroke()
+}
+
+function drawMarchingAnts(time: number) {
+    animated.clear()
+    const dash = new DashLine(animated, {
+        dash: [10, 6],
+        width: 2,
+        color: 0x333333,
+        useTexture,
+        dashOffset: -time / 50,
+    })
+    dash.rect(x2 - 400, 200, 200, 100).stroke()
 }
 
 function draw() {
-    g.removeChildren()
+    labels.removeChildren().forEach((child) => child.destroy())
     g.clear()
     drawScalingRectangle()
     drawJoinCapRectangle()
+    drawRoundRect()
+    drawCurves()
+    drawArc()
     drawCircle()
     drawTinyCircle()
     drawEllipse()
     drawPolygon()
+    label('animated with dashOffset', x2 - 200, 200)
 }
 
 function keyboard() {
@@ -140,6 +197,7 @@ function keyboard() {
     })
 }
 
-setup()
-draw()
-keyboard()
+setup().then(() => {
+    draw()
+    keyboard()
+})

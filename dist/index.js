@@ -10,109 +10,134 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashLine = void 0;
 var PIXI = require("pixi.js");
 var dashLineOptionsDefault = {
     dash: [10, 5],
+    dashOffset: 0,
     width: 1,
     color: 0xffffff,
     alpha: 1,
     scale: 1,
     useTexture: false,
-    alignment: 0.5
+    cap: "butt",
+    join: "miter",
+    alignment: 0.5,
 };
+var tempPoint = new PIXI.Point();
 var DashLine = /** @class */ (function () {
     /**
      * Create a DashLine
      * @param graphics
      * @param [options]
      * @param [options.useTexture=false] - use the texture based render (useful for very large or very small dashed lines)
-     * @param [options.dashes=[10,5] - an array holding the dash and gap (eg, [10, 5, 20, 5, ...])
+     * @param [options.dash=[10,5]] - an array holding the dash and gap (eg, [10, 5, 20, 5, ...])
+     * @param [options.dashOffset=0] - where the line starts in the dash pattern (change and redraw to animate)
      * @param [options.width=1] - width of the dashed line
      * @param [options.alpha=1] - alpha of the dashed line
      * @param [options.color=0xffffff] - color of the dashed line
-     * @param [options.cap] - add a PIXI.LINE_CAP style to dashed lines (only works for useTexture: false)
-     * @param [options.join] - add a PIXI.LINE_JOIN style to the dashed lines (only works for useTexture: false)
-     * @param [options.alignment] - The alignment of any lines drawn (0.5 = middle, 1 = outer, 0 = inner)
+     * @param [options.scale=1] - scale of the dashes and width (eg, 1 / viewport.scale.x keeps the line the same size when zooming)
+     * @param [options.cap=butt] - line cap style for the dashes (only works for useTexture: false)
+     * @param [options.join=miter] - line join style for the dashes (only works for useTexture: false)
+     * @param [options.alignment=0.5] - alignment of the line (pixi.js v8: 0.5 = middle, 1 = inside, 0 = outside)
      */
     function DashLine(graphics, options) {
         if (options === void 0) { options = {}; }
+        /** current length of the line */
+        this.lineLength = 0;
         /** cursor location */
         this.cursor = new PIXI.Point();
         /** desired scale of line */
         this.scale = 1;
+        this.start = new PIXI.Point(0, 0);
+        // offset into the dash pattern at this.start (used to decide whether a closed path needs a final gap)
+        this.startPlace = 0;
         this.graphics = graphics;
-        options = __assign(__assign({}, dashLineOptionsDefault), options);
-        this.dash = options.dash;
+        this.options = __assign(__assign({}, dashLineOptionsDefault), options);
+        this.dash = this.options.dash;
         this.dashSize = this.dash.reduce(function (a, b) { return a + b; });
-        this.useTexture = options.useTexture;
-        this.options = options;
-        this.setLineStyle();
-    }
-    /** resets line style to enable dashed line (useful if lineStyle was changed on graphics element) */
-    DashLine.prototype.setLineStyle = function () {
-        var options = this.options;
+        this.dashOffset = this.options.dashOffset;
+        this.useTexture = Boolean(this.options.useTexture);
+        this.scale = this.options.scale;
         if (this.useTexture) {
-            var texture = DashLine.getTexture(options, this.dashSize);
-            this.graphics.lineTextureStyle({
-                width: options.width * options.scale,
-                color: options.color,
-                alpha: options.alpha,
-                texture: texture,
-                alignment: options.alignment
-            });
-            this.activeTexture = texture;
+            this.texture = DashLine.getTexture(this.options, this.dashSize);
         }
-        else {
-            this.graphics.lineStyle({
-                width: options.width * options.scale,
-                color: options.color,
-                alpha: options.alpha,
-                cap: options.cap,
-                join: options.join,
-                alignment: options.alignment
-            });
+        this.setStrokeStyle();
+    }
+    /** sets the graphics element's stroke style to this dashed line's style (so graphics.stroke() draws with it) */
+    DashLine.prototype.setStrokeStyle = function () {
+        this.graphics.setStrokeStyle(this.getStrokeStyle());
+        return this;
+    };
+    /**
+     * Strokes the dashed path drawn since the last stroke (like PIXI.Graphics.stroke()).
+     * Lines drawn with useTexture: true are stroked as they are drawn, so this is only required for useTexture: false.
+     */
+    DashLine.prototype.stroke = function () {
+        if (!this.useTexture) {
+            this.graphics.stroke(this.getStrokeStyle());
         }
-        this.scale = options.scale;
+        return this;
+    };
+    DashLine.prototype.getStrokeStyle = function () {
+        var options = this.options;
+        return {
+            width: options.width * this.scale,
+            color: options.color,
+            alpha: options.alpha,
+            cap: options.cap,
+            join: options.join,
+            alignment: options.alignment,
+        };
     };
     DashLine.distance = function (x1, y1, x2, y2) {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
     };
+    // place within the (scaled) dash pattern for a given line length
+    DashLine.prototype.getPlace = function (lineLength) {
+        var size = this.dashSize * this.scale;
+        return ((lineLength % size) + size) % size;
+    };
     DashLine.prototype.moveTo = function (x, y) {
-        this.lineLength = 0;
+        this.lineLength = this.dashOffset * this.scale;
+        this.startPlace = this.getPlace(this.lineLength);
         this.cursor.set(x, y);
-        this.start = new PIXI.Point(x, y);
+        this.start.set(x, y);
         this.graphics.moveTo(this.cursor.x, this.cursor.y);
         return this;
     };
     DashLine.prototype.lineTo = function (x, y, closePath) {
-        if (typeof this.lineLength === undefined) {
-            this.moveTo(0, 0);
-        }
         var length = DashLine.distance(this.cursor.x, this.cursor.y, x, y);
         var angle = Math.atan2(y - this.cursor.y, x - this.cursor.x);
-        var closed = closePath && x === this.start.x && y === this.start.y;
+        var cos = Math.cos(angle);
+        var sin = Math.sin(angle);
+        // leaving a gap before the start only makes sense if the pattern starts with a dash
+        var closed = closePath &&
+            this.startPlace === 0 &&
+            x === this.start.x &&
+            y === this.start.y;
         if (this.useTexture) {
-            this.graphics.moveTo(this.cursor.x, this.cursor.y);
-            this.adjustLineStyle(angle);
+            var x1 = x;
+            var y1 = y;
             if (closed && this.dash.length % 2 === 0) {
-                var gap = Math.min(this.dash[this.dash.length - 1], length);
-                this.graphics.lineTo(x - Math.cos(angle) * gap, y - Math.sin(angle) * gap);
-                this.graphics.closePath();
+                var gap = Math.min(this.dash[this.dash.length - 1] * this.scale, length);
+                x1 -= cos * gap;
+                y1 -= sin * gap;
             }
-            else {
-                this.graphics.lineTo(x, y);
-            }
+            // each segment needs its own stroke since the texture's matrix depends on the segment's angle
+            this.graphics
+                .moveTo(this.cursor.x, this.cursor.y)
+                .lineTo(x1, y1)
+                .stroke(this.getTextureStyle(angle));
         }
         else {
-            var cos = Math.cos(angle);
-            var sin = Math.sin(angle);
             var x0 = this.cursor.x;
             var y0 = this.cursor.y;
             // find the first part of the dash for this line
-            var place = this.lineLength % (this.dashSize * this.scale);
-            var dashIndex = 0, dashStart = 0;
+            var place = this.getPlace(this.lineLength);
+            var dashIndex = 0;
+            var dashStart = 0;
             var dashX = 0;
             for (var i = 0; i < this.dash.length; i++) {
                 var dashSize = this.dash[i] * this.scale;
@@ -126,15 +151,15 @@ var DashLine = /** @class */ (function () {
                 }
             }
             var remaining = length;
-            // let count = 0
-            while (remaining > 0) { // && count++ < 1000) {
+            while (remaining > 0) {
                 var dashSize = this.dash[dashIndex] * this.scale - dashStart;
                 var dist = remaining > dashSize ? dashSize : remaining;
                 if (closed) {
                     var remainingDistance = DashLine.distance(x0 + cos * dist, y0 + sin * dist, this.start.x, this.start.y);
                     if (remainingDistance <= dist) {
                         if (dashIndex % 2 === 0) {
-                            var lastDash = DashLine.distance(x0, y0, this.start.x, this.start.y) - this.dash[this.dash.length - 1] * this.scale;
+                            var lastDash = DashLine.distance(x0, y0, this.start.x, this.start.y) -
+                                this.dash[this.dash.length - 1] * this.scale;
                             x0 += cos * lastDash;
                             y0 += sin * lastDash;
                             this.graphics.lineTo(x0, y0);
@@ -155,155 +180,181 @@ var DashLine = /** @class */ (function () {
                 dashIndex = dashIndex === this.dash.length ? 0 : dashIndex;
                 dashStart = 0;
             }
-            // if (count >= 1000) console.log('failure', this.scale)
         }
         this.lineLength += length;
         this.cursor.set(x, y);
         return this;
     };
     DashLine.prototype.closePath = function () {
-        this.lineTo(this.start.x, this.start.y, true);
+        return this.lineTo(this.start.x, this.start.y, true);
     };
-    DashLine.prototype.drawCircle = function (x, y, radius, points, matrix) {
-        if (points === void 0) { points = 80; }
-        var interval = Math.PI * 2 / points;
-        var angle = 0, first;
-        if (matrix) {
-            first = new PIXI.Point(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
-            matrix.apply(first, first);
-            this.moveTo(first[0], first[1]);
-        }
-        else {
-            first = new PIXI.Point(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
-            this.moveTo(first.x, first.y);
-        }
-        angle += interval;
-        for (var i = 1; i < points + 1; i++) {
-            var next = i === points ? first : [x + Math.cos(angle) * radius, y + Math.sin(angle) * radius];
-            this.lineTo(next[0], next[1]);
-            angle += interval;
+    /**
+     * Draws a dashed quadratic curve from the cursor
+     * @param [points=20] - number of line segments used to draw the curve
+     */
+    DashLine.prototype.quadraticCurveTo = function (cpx, cpy, x, y, points) {
+        if (points === void 0) { points = 20; }
+        var x0 = this.cursor.x;
+        var y0 = this.cursor.y;
+        for (var i = 1; i <= points; i++) {
+            var t = i / points;
+            var mt = 1 - t;
+            this.lineTo(mt * mt * x0 + 2 * mt * t * cpx + t * t * x, mt * mt * y0 + 2 * mt * t * cpy + t * t * y);
         }
         return this;
     };
-    DashLine.prototype.drawEllipse = function (x, y, radiusX, radiusY, points, matrix) {
+    /**
+     * Draws a dashed cubic bezier curve from the cursor
+     * @param [points=20] - number of line segments used to draw the curve
+     */
+    DashLine.prototype.bezierCurveTo = function (cp1x, cp1y, cp2x, cp2y, x, y, points) {
+        if (points === void 0) { points = 20; }
+        var x0 = this.cursor.x;
+        var y0 = this.cursor.y;
+        for (var i = 1; i <= points; i++) {
+            var t = i / points;
+            var mt = 1 - t;
+            var a = mt * mt * mt;
+            var b = 3 * mt * mt * t;
+            var c = 3 * mt * t * t;
+            var d = t * t * t;
+            this.lineTo(a * x0 + b * cp1x + c * cp2x + d * x, a * y0 + b * cp1y + c * cp2y + d * y);
+        }
+        return this;
+    };
+    // applies the optional matrix to a point (returns a shared point)
+    DashLine.transform = function (x, y, matrix) {
+        tempPoint.set(x, y);
+        if (matrix) {
+            matrix.apply(tempPoint, tempPoint);
+        }
+        return tempPoint;
+    };
+    /**
+     * Draws a dashed arc (starts a new line at the start of the arc)
+     * @param startAngle - in radians
+     * @param endAngle - in radians (if smaller than startAngle, the arc is drawn counterclockwise)
+     * @param [points=80] - number of line segments used to draw the arc
+     */
+    DashLine.prototype.arc = function (cx, cy, radius, startAngle, endAngle, points, matrix) {
         if (points === void 0) { points = 80; }
-        var interval = Math.PI * 2 / points;
-        var first;
-        var point = new PIXI.Point();
-        var f = 0;
-        for (var i = 0; i < Math.PI * 2; i += interval) {
-            var x0 = x - radiusX * Math.sin(i);
-            var y0 = y - radiusY * Math.cos(i);
-            if (matrix) {
-                point.set(x0, y0);
-                matrix.apply(point, point);
-                x0 = point.x;
-                y0 = point.y;
-            }
-            if (i === 0) {
-                this.moveTo(x0, y0);
-                first = { x: x0, y: y0 };
-            }
-            else {
-                this.lineTo(x0, y0);
-            }
+        var p = DashLine.transform(cx + Math.cos(startAngle) * radius, cy + Math.sin(startAngle) * radius, matrix);
+        this.moveTo(p.x, p.y);
+        return this.arcTo(cx, cy, radius, startAngle, endAngle, points, matrix);
+    };
+    // draws the arc from the cursor (which should be at startAngle)
+    DashLine.prototype.arcTo = function (cx, cy, radius, startAngle, endAngle, points, matrix) {
+        var interval = (endAngle - startAngle) / points;
+        for (var i = 1; i <= points; i++) {
+            var angle = startAngle + i * interval;
+            var p = DashLine.transform(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius, matrix);
+            this.lineTo(p.x, p.y);
+        }
+        return this;
+    };
+    DashLine.prototype.circle = function (x, y, radius, points, matrix) {
+        if (points === void 0) { points = 80; }
+        var interval = (Math.PI * 2) / points;
+        var first = DashLine.transform(x + radius, y, matrix).clone();
+        this.moveTo(first.x, first.y);
+        for (var i = 1; i < points; i++) {
+            var angle = i * interval;
+            var p = DashLine.transform(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius, matrix);
+            this.lineTo(p.x, p.y);
         }
         this.lineTo(first.x, first.y, true);
         return this;
     };
-    DashLine.prototype.drawPolygon = function (points, matrix) {
-        var p = new PIXI.Point();
-        if (typeof points[0] === 'number') {
-            if (matrix) {
-                p.set(points[0], points[1]);
-                matrix.apply(p, p);
-                this.moveTo(p.x, p.y);
-                for (var i = 2; i < points.length; i += 2) {
-                    p.set(points[i], points[i + 1]);
-                    matrix.apply(p, p);
-                    this.lineTo(p.x, p.y, i === points.length - 2);
-                }
-            }
-            else {
-                this.moveTo(points[0], points[1]);
-                for (var i = 2; i < points.length; i += 2) {
-                    this.lineTo(points[i], points[i + 1], i === points.length - 2);
-                }
+    DashLine.prototype.ellipse = function (x, y, radiusX, radiusY, points, matrix) {
+        if (points === void 0) { points = 80; }
+        var interval = (Math.PI * 2) / points;
+        var first = DashLine.transform(x, y - radiusY, matrix).clone();
+        this.moveTo(first.x, first.y);
+        for (var i = 1; i < points; i++) {
+            var angle = i * interval;
+            var p = DashLine.transform(x - radiusX * Math.sin(angle), y - radiusY * Math.cos(angle), matrix);
+            this.lineTo(p.x, p.y);
+        }
+        this.lineTo(first.x, first.y, true);
+        return this;
+    };
+    DashLine.prototype.poly = function (points, matrix) {
+        if (typeof points[0] === "number") {
+            var numbers = points;
+            var first = DashLine.transform(numbers[0], numbers[1], matrix);
+            this.moveTo(first.x, first.y);
+            for (var i = 2; i < numbers.length; i += 2) {
+                var p = DashLine.transform(numbers[i], numbers[i + 1], matrix);
+                this.lineTo(p.x, p.y, i === numbers.length - 2);
             }
         }
         else {
-            if (matrix) {
-                var point = points[0];
-                p.copyFrom(point);
-                matrix.apply(p, p);
-                this.moveTo(p.x, p.y);
-                for (var i = 1; i < points.length; i++) {
-                    var point_1 = points[i];
-                    p.copyFrom(point_1);
-                    matrix.apply(p, p);
-                    this.lineTo(p.x, p.y, i === points.length - 1);
-                }
-            }
-            else {
-                var point = points[0];
-                this.moveTo(point.x, point.y);
-                for (var i = 1; i < points.length; i++) {
-                    var point_2 = points[i];
-                    this.lineTo(point_2.x, point_2.y, i === points.length - 1);
-                }
+            var pointData = points;
+            var first = DashLine.transform(pointData[0].x, pointData[0].y, matrix);
+            this.moveTo(first.x, first.y);
+            for (var i = 1; i < pointData.length; i++) {
+                var p = DashLine.transform(pointData[i].x, pointData[i].y, matrix);
+                this.lineTo(p.x, p.y, i === pointData.length - 1);
             }
         }
         return this;
     };
-    DashLine.prototype.drawRect = function (x, y, width, height, matrix) {
-        if (matrix) {
-            var p = new PIXI.Point();
-            // moveTo(x, y)
-            p.set(x, y);
-            matrix.apply(p, p);
-            this.moveTo(p.x, p.y);
-            // lineTo(x + width, y)
-            p.set(x + width, y);
-            matrix.apply(p, p);
-            this.lineTo(p.x, p.y);
-            // lineTo(x + width, y + height)
-            p.set(x + width, y + height);
-            matrix.apply(p, p);
-            this.lineTo(p.x, p.y);
-            // lineto(x, y + height)
-            p.set(x, y + height);
-            matrix.apply(p, p);
-            this.lineTo(p.x, p.y);
-            // lineTo(x, y, true)
-            p.set(x, y);
-            matrix.apply(p, p);
-            this.lineTo(p.x, p.y, true);
-        }
-        else {
-            this.moveTo(x, y)
-                .lineTo(x + width, y)
-                .lineTo(x + width, y + height)
-                .lineTo(x, y + height)
-                .lineTo(x, y, true);
-        }
+    DashLine.prototype.rect = function (x, y, width, height, matrix) {
+        return this.poly([x, y, x + width, y, x + width, y + height, x, y + height, x, y], matrix);
+    };
+    /**
+     * Draws a dashed rectangle with rounded corners
+     * @param [radius=10] - corner radius (limited to half the smaller side)
+     * @param [points=10] - number of line segments used to draw each corner
+     */
+    DashLine.prototype.roundRect = function (x, y, width, height, radius, points, matrix) {
+        if (radius === void 0) { radius = 10; }
+        if (points === void 0) { points = 10; }
+        radius = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+        var half = Math.PI / 2;
+        var start = DashLine.transform(x + radius, y, matrix).clone();
+        this.moveTo(start.x, start.y);
+        var p = DashLine.transform(x + width - radius, y, matrix);
+        this.lineTo(p.x, p.y);
+        this.arcTo(x + width - radius, y + radius, radius, -half, 0, points, matrix);
+        p = DashLine.transform(x + width, y + height - radius, matrix);
+        this.lineTo(p.x, p.y);
+        this.arcTo(x + width - radius, y + height - radius, radius, 0, half, points, matrix);
+        p = DashLine.transform(x + radius, y + height, matrix);
+        this.lineTo(p.x, p.y);
+        this.arcTo(x + radius, y + height - radius, radius, half, Math.PI, points, matrix);
+        p = DashLine.transform(x, y + radius, matrix);
+        this.lineTo(p.x, p.y);
+        // the last corner ends exactly at the start so the path closes properly
+        this.arcTo(x + radius, y + radius, radius, Math.PI, Math.PI + half - half / points, points - 1, matrix);
+        this.lineTo(start.x, start.y, true);
         return this;
     };
-    // adjust the matrix for the dashed texture
-    DashLine.prototype.adjustLineStyle = function (angle) {
-        var lineStyle = this.graphics.line;
-        lineStyle.matrix = new PIXI.Matrix();
+    // creates the stroke style (with the texture's matrix) for a segment of the line with useTexture: true
+    DashLine.prototype.getTextureStyle = function (angle) {
+        var matrix = new PIXI.Matrix();
         if (angle) {
-            lineStyle.matrix.rotate(angle);
+            matrix.rotate(angle);
         }
-        if (this.scale !== 1)
-            lineStyle.matrix.scale(this.scale, this.scale);
+        if (this.scale !== 1) {
+            matrix.scale(this.scale, this.scale);
+        }
         var textureStart = -this.lineLength;
-        lineStyle.matrix.translate(this.cursor.x + textureStart * Math.cos(angle), this.cursor.y + textureStart * Math.sin(angle));
-        this.graphics.lineStyle(lineStyle);
+        matrix.translate(this.cursor.x + textureStart * Math.cos(angle), this.cursor.y + textureStart * Math.sin(angle));
+        var options = this.options;
+        return {
+            width: options.width * this.scale,
+            color: options.color,
+            alpha: options.alpha,
+            alignment: options.alignment,
+            texture: this.texture,
+            matrix: matrix,
+            textureSpace: "global",
+        };
     };
     // creates or uses cached texture
     DashLine.getTexture = function (options, dashSize) {
-        var key = options.dash.toString();
+        var key = "".concat(options.dash.toString(), "-").concat(options.width);
         if (DashLine.dashTextureCache[key]) {
             return DashLine.dashTextureCache[key];
         }
@@ -312,11 +363,11 @@ var DashLine = /** @class */ (function () {
         canvas.height = Math.ceil(options.width);
         var context = canvas.getContext("2d");
         if (!context) {
-            console.warn('Did not get context from canvas');
-            return;
+            console.warn("Did not get context from canvas");
+            return undefined;
         }
+        // color and alpha are applied by the stroke
         context.strokeStyle = "white";
-        context.globalAlpha = options.alpha;
         context.lineWidth = options.width;
         var x = 0;
         var y = options.width / 2;
@@ -330,8 +381,9 @@ var DashLine = /** @class */ (function () {
             }
         }
         context.stroke();
-        var texture = DashLine.dashTextureCache[key] = PIXI.Texture.from(canvas);
-        texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+        var texture = (DashLine.dashTextureCache[key] =
+            PIXI.Texture.from(canvas));
+        texture.source.scaleMode = "nearest";
         return texture;
     };
     // cache of PIXI.Textures for dashed lines
