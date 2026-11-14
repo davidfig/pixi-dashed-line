@@ -9,6 +9,26 @@ A pixi.js implementation to support dashed lines in PIXI.Graphics.
 
 Version 2 requires pixi.js v8. Use pixi-dashed-line@1 for pixi.js v6.
 
+## Try pixi.js first
+
+Since 8.23, pixi.js can draw dashed lines itself: give a `SmoothGraphics` a `DashLineShader`. If that covers what you need, use it instead of this library. It's built in, and it anti-aliases the dash ends.
+
+```js
+import { DashLineShader, SmoothGraphics } from 'pixi.js'
+
+const g = new SmoothGraphics()
+g.context.customShader = new DashLineShader({ dash: 10, gap: 5 })
+g.moveTo(0, 0).lineTo(200, 100).stroke({ color: 0xffffff, width: 2 })
+```
+
+Use pixi-dashed-line when you need something pixi's shader doesn't do:
+
+* **Dash patterns:** more than one dash and gap, such as `[10, 5, 2, 5]` for dash-dot. pixi's shader has one dash length and one gap length.
+* **Animated dashes:** `dashOffset` moves where the pattern starts, for marching ants. pixi's shader has no offset.
+* **Dashed and solid in one graphics:** pixi's shader dashes every stroke of the `SmoothGraphics` and hides its fills. pixi-dashed-line only dashes the lines you draw with it, so the same `Graphics` can also have fills and solid lines.
+* **The canvas renderer:** a `SmoothGraphics` is drawn like a plain `Graphics` there, so pixi's dashes come out solid. pixi-dashed-line draws each dash as its own segment, so it works with every renderer.
+* **pixi.js 8.0 to 8.22.**
+
 ## Live Demo
 
 [https://davidfig.github.io/pixi-dashed-line](https://davidfig.github.io/pixi-dashed-line/) ([source code](https://github.com/davidfig/pixi-dashed-line/blob/main/demo/index.ts))
